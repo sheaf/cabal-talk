@@ -1,0 +1,954 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveFoldable      #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveFunctor       #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE DeriveTraversable   #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings   #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Distribution.Utils.GrammarRegex</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-7"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Regular expressions</span></span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier">GrammarRegex</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reEps"><span class="hs-identifier">reEps</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-10"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reChar"><span class="hs-identifier">reChar</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reChars"><span class="hs-identifier">reChars</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-12"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reMunchCS"><span class="hs-identifier">reMunchCS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-13"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reMunch1CS"><span class="hs-identifier">reMunch1CS</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-14"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Variables</span></span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reVar0"><span class="hs-identifier">reVar0</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-16"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reVar1"><span class="hs-identifier">reVar1</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-17"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Pretty-printing</span></span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#regexDoc"><span class="hs-identifier">regexDoc</span></a></span><span class="hs-special">,</span><span>
+</span><span id="line-19"></span><span>    </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Char</span></span><span>                     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">isAlphaNum</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">isControl</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ord</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Foldable</span></span><span>                 </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Foldable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>                    </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromMaybe</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Monoid</span></span><span>                   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Monoid</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.String</span></span><span>                   </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">IsString</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Traversable</span></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Traversable</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Void</span></span><span>                     </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Void</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">vacuous</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Compat.Semigroup.html"><span class="hs-identifier">Distribution.Compat.Semigroup</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Semigroup</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span>                       </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Bool</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Eq</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Functor</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Int</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Ord</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Show</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">String</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">fmap</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">length</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">map</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">otherwise</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">($)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(++)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="Distribution.Utils.CharSet.html"><span class="hs-identifier">Distribution.Utils.CharSet</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">CS</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Text.PrettyPrint</span></span><span>           </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">PP</span></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-type">(&lt;&lt;&gt;&gt;)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-35"></span><span id="%3C%3C%3E%3E"><span class="annot"><span class="annottext">&lt;&lt;&gt;&gt; :: Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var hs-var">(&lt;&lt;&gt;&gt;)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><span class="hs-operator hs-var">(PP.&lt;&gt;)</span></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- GrammarRegex</span><span>
+</span><span id="line-39"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="annot"><span class="hs-comment">-- | Recursive regular expressions tuned for 'Described' use-case.</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">data</span><span> </span><span id="GrammarRegex"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-var">GrammarRegex</span></a></span></span><span> </span><span id="local-6989586621679099001"><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-43"></span><span>    </span><span class="hs-glyph">=</span><span> </span><span id="REAppend"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-var">REAppend</span></a></span></span><span>  </span><span class="hs-special">[</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span>          </span><span class="annot"><span class="hs-comment">-- ^ append @ab@</span></span><span>
+</span><span id="line-44"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REUnion"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REUnion"><span class="hs-identifier hs-var">REUnion</span></a></span></span><span>   </span><span class="hs-special">[</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">]</span><span>          </span><span class="annot"><span class="hs-comment">-- ^ union @a|b@</span></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span>    </span><span class="hs-comment">-- repetition</span><span>
+</span><span id="line-47"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REMunch"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunch"><span class="hs-identifier hs-var">REMunch</span></a></span></span><span>   </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>       </span><span class="annot"><span class="hs-comment">-- ^ star @a*@, with a separator</span></span><span>
+</span><span id="line-48"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REMunch1"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunch1"><span class="hs-identifier hs-var">REMunch1</span></a></span></span><span>  </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>       </span><span class="annot"><span class="hs-comment">-- ^ plus @a+@, with a separator</span></span><span>
+</span><span id="line-49"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REMunchR"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunchR"><span class="hs-identifier hs-var">REMunchR</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>    </span><span class="annot"><span class="hs-comment">-- ^ 1-n, with a separator</span></span><span>
+</span><span id="line-50"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REOpt"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REOpt"><span class="hs-identifier hs-var">REOpt</span></a></span></span><span>     </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>                        </span><span class="annot"><span class="hs-comment">-- ^ optional @r?@</span></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REString"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REString"><span class="hs-identifier hs-var">REString</span></a></span></span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>                           </span><span class="annot"><span class="hs-comment">-- ^ literal string @abcd@</span></span><span>
+</span><span id="line-53"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RECharSet"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-var">RECharSet</span></a></span></span><span> </span><span class="annot"><a href="Distribution.Utils.CharSet.html#CharSet"><span class="hs-identifier hs-type">CS.CharSet</span></a></span><span>                       </span><span class="annot"><span class="hs-comment">-- ^ charset @[:alnum:]@</span></span><span>
+</span><span id="line-54"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REVar"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REVar"><span class="hs-identifier hs-var">REVar</span></a></span></span><span>     </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span>                                </span><span class="annot"><span class="hs-comment">-- ^ variable</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RENamed"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RENamed"><span class="hs-identifier hs-var">RENamed</span></a></span></span><span>   </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>          </span><span class="annot"><span class="hs-comment">-- ^ named expression</span></span><span>
+</span><span id="line-56"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RERec"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RERec"><span class="hs-identifier hs-var">RERec</span></a></span></span><span>     </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>  </span><span class="annot"><span class="hs-comment">-- ^ recursive expressions</span></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span>    </span><span class="hs-comment">-- cabal syntax specifics</span><span>
+</span><span id="line-59"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RESpaces"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RESpaces"><span class="hs-identifier hs-var">RESpaces</span></a></span></span><span>                            </span><span class="annot"><span class="hs-comment">-- ^ zero-or-more spaces</span></span><span>
+</span><span id="line-60"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RESpaces1"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RESpaces1"><span class="hs-identifier hs-var">RESpaces1</span></a></span></span><span>                           </span><span class="annot"><span class="hs-comment">-- ^ one-or-more spaces</span></span><span>
+</span><span id="line-61"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RECommaList"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECommaList"><span class="hs-identifier hs-var">RECommaList</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>        </span><span class="annot"><span class="hs-comment">-- ^ comma list (note, leading or trailing commas)</span></span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RECommaNonEmpty"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECommaNonEmpty"><span class="hs-identifier hs-var">RECommaNonEmpty</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>    </span><span class="annot"><span class="hs-comment">-- ^ comma non-empty list (note, leading or trailing commas)</span></span><span>
+</span><span id="line-63"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="REOptCommaList"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REOptCommaList"><span class="hs-identifier hs-var">REOptCommaList</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099001"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>     </span><span class="annot"><span class="hs-comment">-- ^ opt comma list</span></span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span id="RETodo"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RETodo"><span class="hs-identifier hs-var">RETodo</span></a></span></span><span>                              </span><span class="annot"><span class="hs-comment">-- ^ unspecified</span></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679099117"><span id="local-6989586621679099144"><span class="annot"><span class="annottext">GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+(GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; Eq (GrammarRegex a)
+forall a. Eq a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+forall a. (a -&gt; a -&gt; Bool) -&gt; (a -&gt; a -&gt; Bool) -&gt; Eq a
+$c== :: forall a. Eq a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+== :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+$c/= :: forall a. Eq a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+/= :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Eq</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099153"><span id="local-6989586621679099181"><span id="local-6989586621679099184"><span id="local-6989586621679099187"><span id="local-6989586621679099190"><span id="local-6989586621679099193"><span id="local-6989586621679099196"><span class="annot"><span class="annottext">Eq (GrammarRegex a)
+Eq (GrammarRegex a) =&gt;
+(GrammarRegex a -&gt; GrammarRegex a -&gt; Ordering)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a)
+-&gt; (GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a)
+-&gt; Ord (GrammarRegex a)
+GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+GrammarRegex a -&gt; GrammarRegex a -&gt; Ordering
+GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+forall a.
+Eq a =&gt;
+(a -&gt; a -&gt; Ordering)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; Bool)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; (a -&gt; a -&gt; a)
+-&gt; Ord a
+forall a. Ord a =&gt; Eq (GrammarRegex a)
+forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Ordering
+forall a.
+Ord a =&gt;
+GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+$ccompare :: forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Ordering
+compare :: GrammarRegex a -&gt; GrammarRegex a -&gt; Ordering
+$c&lt; :: forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+&lt; :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+$c&lt;= :: forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+&lt;= :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+$c&gt; :: forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+&gt; :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+$c&gt;= :: forall a. Ord a =&gt; GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+&gt;= :: GrammarRegex a -&gt; GrammarRegex a -&gt; Bool
+$cmax :: forall a.
+Ord a =&gt;
+GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+max :: GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+$cmin :: forall a.
+Ord a =&gt;
+GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+min :: GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Ord</span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099204"><span id="local-6989586621679099247"><span id="local-6989586621679099250"><span class="annot"><span class="annottext">Int -&gt; GrammarRegex a -&gt; ShowS
+[GrammarRegex a] -&gt; ShowS
+GrammarRegex a -&gt; [Char]
+(Int -&gt; GrammarRegex a -&gt; ShowS)
+-&gt; (GrammarRegex a -&gt; [Char])
+-&gt; ([GrammarRegex a] -&gt; ShowS)
+-&gt; Show (GrammarRegex a)
+forall a. Show a =&gt; Int -&gt; GrammarRegex a -&gt; ShowS
+forall a. Show a =&gt; [GrammarRegex a] -&gt; ShowS
+forall a. Show a =&gt; GrammarRegex a -&gt; [Char]
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; [Char]) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: forall a. Show a =&gt; Int -&gt; GrammarRegex a -&gt; ShowS
+showsPrec :: Int -&gt; GrammarRegex a -&gt; ShowS
+$cshow :: forall a. Show a =&gt; GrammarRegex a -&gt; [Char]
+show :: GrammarRegex a -&gt; [Char]
+$cshowList :: forall a. Show a =&gt; [GrammarRegex a] -&gt; ShowS
+showList :: [GrammarRegex a] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099256"><span id="local-6989586621679099277"><span class="annot"><span class="annottext">(forall a b. (a -&gt; b) -&gt; GrammarRegex a -&gt; GrammarRegex b)
+-&gt; (forall a b. a -&gt; GrammarRegex b -&gt; GrammarRegex a)
+-&gt; Functor GrammarRegex
+forall a b. a -&gt; GrammarRegex b -&gt; GrammarRegex a
+forall a b. (a -&gt; b) -&gt; GrammarRegex a -&gt; GrammarRegex b
+forall (f :: * -&gt; *).
+(forall a b. (a -&gt; b) -&gt; f a -&gt; f b)
+-&gt; (forall a b. a -&gt; f b -&gt; f a) -&gt; Functor f
+$cfmap :: forall a b. (a -&gt; b) -&gt; GrammarRegex a -&gt; GrammarRegex b
+fmap :: forall a b. (a -&gt; b) -&gt; GrammarRegex a -&gt; GrammarRegex b
+$c&lt;$ :: forall a b. a -&gt; GrammarRegex b -&gt; GrammarRegex a
+&lt;$ :: forall a b. a -&gt; GrammarRegex b -&gt; GrammarRegex a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var">Functor</span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099297"><span id="local-6989586621679099303"><span id="local-6989586621679099349"><span id="local-6989586621679099354"><span id="local-6989586621679099373"><span id="local-6989586621679099376"><span id="local-6989586621679099379"><span id="local-6989586621679099382"><span id="local-6989586621679099385"><span id="local-6989586621679099388"><span id="local-6989586621679099391"><span id="local-6989586621679099410"><span id="local-6989586621679099413"><span id="local-6989586621679099418"><span id="local-6989586621679099423"><span id="local-6989586621679099428"><span id="local-6989586621679099433"><span class="annot"><span class="annottext">(forall m. Monoid m =&gt; GrammarRegex m -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a)
+-&gt; (forall a. GrammarRegex a -&gt; [a])
+-&gt; (forall a. GrammarRegex a -&gt; Bool)
+-&gt; (forall a. GrammarRegex a -&gt; Int)
+-&gt; (forall a. Eq a =&gt; a -&gt; GrammarRegex a -&gt; Bool)
+-&gt; (forall a. Ord a =&gt; GrammarRegex a -&gt; a)
+-&gt; (forall a. Ord a =&gt; GrammarRegex a -&gt; a)
+-&gt; (forall a. Num a =&gt; GrammarRegex a -&gt; a)
+-&gt; (forall a. Num a =&gt; GrammarRegex a -&gt; a)
+-&gt; Foldable GrammarRegex
+forall a. Eq a =&gt; a -&gt; GrammarRegex a -&gt; Bool
+forall a. Num a =&gt; GrammarRegex a -&gt; a
+forall a. Ord a =&gt; GrammarRegex a -&gt; a
+forall m. Monoid m =&gt; GrammarRegex m -&gt; m
+forall a. GrammarRegex a -&gt; Bool
+forall a. GrammarRegex a -&gt; Int
+forall a. GrammarRegex a -&gt; [a]
+forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a
+forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m
+forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+forall (t :: * -&gt; *).
+(forall m. Monoid m =&gt; t m -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; t a -&gt; m)
+-&gt; (forall m a. Monoid m =&gt; (a -&gt; m) -&gt; t a -&gt; m)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; t a -&gt; b)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; t a -&gt; a)
+-&gt; (forall a. (a -&gt; a -&gt; a) -&gt; t a -&gt; a)
+-&gt; (forall a. t a -&gt; [a])
+-&gt; (forall a. t a -&gt; Bool)
+-&gt; (forall a. t a -&gt; Int)
+-&gt; (forall a. Eq a =&gt; a -&gt; t a -&gt; Bool)
+-&gt; (forall a. Ord a =&gt; t a -&gt; a)
+-&gt; (forall a. Ord a =&gt; t a -&gt; a)
+-&gt; (forall a. Num a =&gt; t a -&gt; a)
+-&gt; (forall a. Num a =&gt; t a -&gt; a)
+-&gt; Foldable t
+$cfold :: forall m. Monoid m =&gt; GrammarRegex m -&gt; m
+fold :: forall m. Monoid m =&gt; GrammarRegex m -&gt; m
+$cfoldMap :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m
+foldMap :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m
+$cfoldMap' :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m
+foldMap' :: forall m a. Monoid m =&gt; (a -&gt; m) -&gt; GrammarRegex a -&gt; m
+$cfoldr :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+foldr :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+$cfoldr' :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+foldr' :: forall a b. (a -&gt; b -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+$cfoldl :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+foldl :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+$cfoldl' :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+foldl' :: forall b a. (b -&gt; a -&gt; b) -&gt; b -&gt; GrammarRegex a -&gt; b
+$cfoldr1 :: forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a
+foldr1 :: forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a
+$cfoldl1 :: forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a
+foldl1 :: forall a. (a -&gt; a -&gt; a) -&gt; GrammarRegex a -&gt; a
+$ctoList :: forall a. GrammarRegex a -&gt; [a]
+toList :: forall a. GrammarRegex a -&gt; [a]
+$cnull :: forall a. GrammarRegex a -&gt; Bool
+null :: forall a. GrammarRegex a -&gt; Bool
+$clength :: forall a. GrammarRegex a -&gt; Int
+length :: forall a. GrammarRegex a -&gt; Int
+$celem :: forall a. Eq a =&gt; a -&gt; GrammarRegex a -&gt; Bool
+elem :: forall a. Eq a =&gt; a -&gt; GrammarRegex a -&gt; Bool
+$cmaximum :: forall a. Ord a =&gt; GrammarRegex a -&gt; a
+maximum :: forall a. Ord a =&gt; GrammarRegex a -&gt; a
+$cminimum :: forall a. Ord a =&gt; GrammarRegex a -&gt; a
+minimum :: forall a. Ord a =&gt; GrammarRegex a -&gt; a
+$csum :: forall a. Num a =&gt; GrammarRegex a -&gt; a
+sum :: forall a. Num a =&gt; GrammarRegex a -&gt; a
+$cproduct :: forall a. Num a =&gt; GrammarRegex a -&gt; a
+product :: forall a. Num a =&gt; GrammarRegex a -&gt; a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Foldable</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099443"><span id="local-6989586621679099501"><span id="local-6989586621679099506"><span id="local-6989586621679099511"><span class="annot"><span class="annottext">Functor GrammarRegex
+Foldable GrammarRegex
+(Functor GrammarRegex, Foldable GrammarRegex) =&gt;
+(forall (f :: * -&gt; *) a b.
+ Applicative f =&gt;
+ (a -&gt; f b) -&gt; GrammarRegex a -&gt; f (GrammarRegex b))
+-&gt; (forall (f :: * -&gt; *) a.
+    Applicative f =&gt;
+    GrammarRegex (f a) -&gt; f (GrammarRegex a))
+-&gt; (forall (m :: * -&gt; *) a b.
+    Monad m =&gt;
+    (a -&gt; m b) -&gt; GrammarRegex a -&gt; m (GrammarRegex b))
+-&gt; (forall (m :: * -&gt; *) a.
+    Monad m =&gt;
+    GrammarRegex (m a) -&gt; m (GrammarRegex a))
+-&gt; Traversable GrammarRegex
+forall (t :: * -&gt; *).
+(Functor t, Foldable t) =&gt;
+(forall (f :: * -&gt; *) a b.
+ Applicative f =&gt;
+ (a -&gt; f b) -&gt; t a -&gt; f (t b))
+-&gt; (forall (f :: * -&gt; *) a. Applicative f =&gt; t (f a) -&gt; f (t a))
+-&gt; (forall (m :: * -&gt; *) a b.
+    Monad m =&gt;
+    (a -&gt; m b) -&gt; t a -&gt; m (t b))
+-&gt; (forall (m :: * -&gt; *) a. Monad m =&gt; t (m a) -&gt; m (t a))
+-&gt; Traversable t
+forall (m :: * -&gt; *) a.
+Monad m =&gt;
+GrammarRegex (m a) -&gt; m (GrammarRegex a)
+forall (f :: * -&gt; *) a.
+Applicative f =&gt;
+GrammarRegex (f a) -&gt; f (GrammarRegex a)
+forall (m :: * -&gt; *) a b.
+Monad m =&gt;
+(a -&gt; m b) -&gt; GrammarRegex a -&gt; m (GrammarRegex b)
+forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; GrammarRegex a -&gt; f (GrammarRegex b)
+$ctraverse :: forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; GrammarRegex a -&gt; f (GrammarRegex b)
+traverse :: forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; GrammarRegex a -&gt; f (GrammarRegex b)
+$csequenceA :: forall (f :: * -&gt; *) a.
+Applicative f =&gt;
+GrammarRegex (f a) -&gt; f (GrammarRegex a)
+sequenceA :: forall (f :: * -&gt; *) a.
+Applicative f =&gt;
+GrammarRegex (f a) -&gt; f (GrammarRegex a)
+$cmapM :: forall (m :: * -&gt; *) a b.
+Monad m =&gt;
+(a -&gt; m b) -&gt; GrammarRegex a -&gt; m (GrammarRegex b)
+mapM :: forall (m :: * -&gt; *) a b.
+Monad m =&gt;
+(a -&gt; m b) -&gt; GrammarRegex a -&gt; m (GrammarRegex b)
+$csequence :: forall (m :: * -&gt; *) a.
+Monad m =&gt;
+GrammarRegex (m a) -&gt; m (GrammarRegex a)
+sequence :: forall (m :: * -&gt; *) a.
+Monad m =&gt;
+GrammarRegex (m a) -&gt; m (GrammarRegex a)
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Traversable</span></span></span></span></span></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- Instances</span><span>
+</span><span id="line-70"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-71"></span><span>
+</span><span id="line-72"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679098995"><span class="annot"><span class="hs-identifier hs-type">IsString</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098995"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-73"></span><span>    </span><span id="local-6989586621679099520"><span class="annot"><span class="annottext">fromString :: [Char] -&gt; GrammarRegex a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">fromString</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; GrammarRegex a
+forall a. [Char] -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REString"><span class="hs-identifier hs-var">REString</span></a></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679099000"><span id="local-6989586621679099523"><span id="local-6989586621679099527"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099000"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-76"></span><span>    </span><span id="local-6989586621679099532"><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099532"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679099533"><span class="annot"><span class="annottext">&lt;&gt; :: GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+</span><span class="hs-operator hs-var hs-var hs-var hs-var">&lt;&gt;</span></span></span><span> </span><span id="local-6989586621679099534"><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099534"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex a] -&gt; GrammarRegex a
+forall a. [GrammarRegex a] -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-var">REAppend</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">GrammarRegex a -&gt; [GrammarRegex a]
+forall {a}. GrammarRegex a -&gt; [GrammarRegex a]
+</span><a href="#local-6989586621679099535"><span class="hs-identifier hs-var">unAppend</span></a></span><span> </span><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099532"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">[GrammarRegex a] -&gt; [GrammarRegex a] -&gt; [GrammarRegex a]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex a -&gt; [GrammarRegex a]
+forall {a}. GrammarRegex a -&gt; [GrammarRegex a]
+</span><a href="#local-6989586621679099535"><span class="hs-identifier hs-var">unAppend</span></a></span><span> </span><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099534"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-77"></span><span>        </span><span id="local-6989586621679099535"><span class="annot"><span class="annottext">unAppend :: GrammarRegex a -&gt; [GrammarRegex a]
+</span><a href="#local-6989586621679099535"><span class="hs-identifier hs-var hs-var">unAppend</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-type">REAppend</span></a></span><span> </span><span id="local-6989586621679099536"><span class="annot"><span class="annottext">[GrammarRegex a]
+</span><a href="#local-6989586621679099536"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex a]
+</span><a href="#local-6989586621679099536"><span class="hs-identifier hs-var">rs</span></a></span><span>
+</span><span id="line-78"></span><span>        </span><span class="annot"><a href="#local-6989586621679099535"><span class="hs-identifier hs-var">unAppend</span></a></span><span> </span><span id="local-6989586621679099537"><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099537"><span class="hs-identifier hs-var">r</span></a></span></span><span>             </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">GrammarRegex a
+</span><a href="#local-6989586621679099537"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679099006"><span id="local-6989586621679099543"><span class="annot"><span class="hs-identifier hs-type">Monoid</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099006"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-81"></span><span>    </span><span id="local-6989586621679099547"><span class="annot"><span class="annottext">mempty :: GrammarRegex a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">mempty</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex a] -&gt; GrammarRegex a
+forall a. [GrammarRegex a] -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-var">REAppend</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-82"></span><span>    </span><span id="local-6989586621679099549"><span class="annot"><span class="annottext">mappend :: GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">mappend</span></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">(&lt;&gt;)</span></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-85"></span><span class="hs-comment">-- Smart constructors</span><span>
+</span><span id="line-86"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span id="local-6989586621679099550"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reEps"><span class="hs-identifier hs-type">reEps</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099550"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-89"></span><span id="reEps"><span class="annot"><span class="annottext">reEps :: forall a. GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reEps"><span class="hs-identifier hs-var hs-var">reEps</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex a] -&gt; GrammarRegex a
+forall a. [GrammarRegex a] -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-var">REAppend</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span id="local-6989586621679099008"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reChar"><span class="hs-identifier hs-type">reChar</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099008"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-92"></span><span id="reChar"><span class="annot"><span class="annottext">reChar :: forall a. Char -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reChar"><span class="hs-identifier hs-var hs-var">reChar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; GrammarRegex a
+forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-var">RECharSet</span></a></span><span> </span><span class="annot"><span class="annottext">(CharSet -&gt; GrammarRegex a)
+-&gt; (Char -&gt; CharSet) -&gt; Char -&gt; GrammarRegex a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; CharSet
+</span><a href="Distribution.Utils.CharSet.html#singleton"><span class="hs-identifier hs-var">CS.singleton</span></a></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span id="local-6989586621679099552"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reChars"><span class="hs-identifier hs-type">reChars</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">]</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099552"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-95"></span><span id="reChars"><span class="annot"><span class="annottext">reChars :: forall a. [Char] -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reChars"><span class="hs-identifier hs-var hs-var">reChars</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; GrammarRegex a
+forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-var">RECharSet</span></a></span><span> </span><span class="annot"><span class="annottext">(CharSet -&gt; GrammarRegex a)
+-&gt; ([Char] -&gt; CharSet) -&gt; [Char] -&gt; GrammarRegex a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; CharSet
+</span><a href="Distribution.Utils.CharSet.html#fromList"><span class="hs-identifier hs-var">CS.fromList</span></a></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span id="local-6989586621679099554"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reMunch1CS"><span class="hs-identifier hs-type">reMunch1CS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.CharSet.html#CharSet"><span class="hs-identifier hs-type">CS.CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099554"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-98"></span><span id="reMunch1CS"><span class="annot"><span class="annottext">reMunch1CS :: forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reMunch1CS"><span class="hs-identifier hs-var hs-var">reMunch1CS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+forall a. GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REMunch1"><span class="hs-identifier hs-var">REMunch1</span></a></span><span> </span><span class="annot"><span class="annottext">GrammarRegex a
+forall a. GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reEps"><span class="hs-identifier hs-var">reEps</span></a></span><span> </span><span class="annot"><span class="annottext">(GrammarRegex a -&gt; GrammarRegex a)
+-&gt; (CharSet -&gt; GrammarRegex a) -&gt; CharSet -&gt; GrammarRegex a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; GrammarRegex a
+forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-var">RECharSet</span></a></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span id="local-6989586621679099555"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reMunchCS"><span class="hs-identifier hs-type">reMunchCS</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.CharSet.html#CharSet"><span class="hs-identifier hs-type">CS.CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099555"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-101"></span><span id="reMunchCS"><span class="annot"><span class="annottext">reMunchCS :: forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reMunchCS"><span class="hs-identifier hs-var hs-var">reMunchCS</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+forall a. GrammarRegex a -&gt; GrammarRegex a -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REMunch"><span class="hs-identifier hs-var">REMunch</span></a></span><span> </span><span class="annot"><span class="annottext">GrammarRegex a
+forall a. GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#reEps"><span class="hs-identifier hs-var">reEps</span></a></span><span> </span><span class="annot"><span class="annottext">(GrammarRegex a -&gt; GrammarRegex a)
+-&gt; (CharSet -&gt; GrammarRegex a) -&gt; CharSet -&gt; GrammarRegex a
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; GrammarRegex a
+forall a. CharSet -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-var">RECharSet</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- Variables</span><span>
+</span><span id="line-105"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span id="local-6989586621679099016"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reVar0"><span class="hs-identifier hs-type">reVar0</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679099016"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-108"></span><span id="reVar0"><span class="annot"><span class="annottext">reVar0 :: forall a. GrammarRegex (Maybe a)
+</span><a href="Distribution.Utils.GrammarRegex.html#reVar0"><span class="hs-identifier hs-var hs-var">reVar0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe a -&gt; GrammarRegex (Maybe a)
+forall a. a -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REVar"><span class="hs-identifier hs-var">REVar</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span id="local-6989586621679099018"><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#reVar1"><span class="hs-identifier hs-type">reVar1</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679099018"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span></span><span>
+</span><span id="line-111"></span><span id="reVar1"><span class="annot"><span class="annottext">reVar1 :: forall a. GrammarRegex (Maybe (Maybe a))
+</span><a href="Distribution.Utils.GrammarRegex.html#reVar1"><span class="hs-identifier hs-var hs-var">reVar1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (Maybe a) -&gt; GrammarRegex (Maybe (Maybe a))
+forall a. a -&gt; GrammarRegex a
+</span><a href="Distribution.Utils.GrammarRegex.html#REVar"><span class="hs-identifier hs-var">REVar</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe a -&gt; Maybe (Maybe a)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-114"></span><span class="hs-comment">-- Pretty-printing</span><span>
+</span><span id="line-115"></span><span class="hs-comment">-------------------------------------------------------------------------------</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-118"></span><span class="hs-comment">--</span><span>
+</span><span id="line-119"></span><span class="hs-comment">-- &gt;&gt;&gt; regexDoc $ REString &quot;True&quot;</span><span>
+</span><span id="line-120"></span><span class="hs-comment">-- \mathop{\mathord{``}\mathtt{True}\mathord{&quot;}}</span><span>
+</span><span id="line-121"></span><span class="hs-comment">--</span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- Note: we don't simplify regexps yet:</span><span>
+</span><span id="line-123"></span><span class="hs-comment">--</span><span>
+</span><span id="line-124"></span><span class="hs-comment">-- &gt;&gt;&gt; regexDoc $ REString &quot;foo&quot; &lt;&gt; REString &quot;bar&quot;</span><span>
+</span><span id="line-125"></span><span class="hs-comment">-- \mathop{\mathord{``}\mathtt{foo}\mathord{&quot;}}\mathop{\mathord{``}\mathtt{bar}\mathord{&quot;}}</span><span>
+</span><span id="line-126"></span><span class="hs-comment">--</span><span>
+</span><span id="line-127"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#regexDoc"><span class="hs-identifier hs-type">regexDoc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Void</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-128"></span><span id="regexDoc"><span class="annot"><span class="annottext">regexDoc :: GrammarRegex Void -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#regexDoc"><span class="hs-identifier hs-var hs-var">regexDoc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(GrammarRegex Doc -&gt; Doc)
+-&gt; (GrammarRegex Void -&gt; GrammarRegex Doc)
+-&gt; GrammarRegex Void
+-&gt; Doc
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Void -&gt; GrammarRegex Doc
+forall (f :: * -&gt; *) a. Functor f =&gt; f Void -&gt; f a
+</span><span class="hs-identifier hs-var">vacuous</span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-129"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#GrammarRegex"><span class="hs-identifier hs-type">GrammarRegex</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-130"></span><span>    </span><span id="local-6989586621679099556"><span class="annot"><span class="annottext">go :: Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-type">REAppend</span></a></span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;&quot;</span></span><span>
+</span><span id="line-131"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099557"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099557"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REAppend"><span class="hs-identifier hs-type">REAppend</span></a></span><span> </span><span id="local-6989586621679099558"><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099558"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099557"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(GrammarRegex Doc -&gt; Doc) -&gt; [GrammarRegex Doc] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">2</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099558"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099562"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099562"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REUnion"><span class="hs-identifier hs-type">REUnion</span></a></span><span> </span><span class="hs-special">[</span><span id="local-6989586621679099563"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099563"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099562"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099563"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-133"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REUnion"><span class="hs-identifier hs-type">REUnion</span></a></span><span> </span><span id="local-6989586621679099564"><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099564"><span class="hs-identifier hs-var">rs</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hsep</span></span><span>
+</span><span id="line-134"></span><span>        </span><span class="hs-special">[</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\left\\{&quot;</span></span><span>
+</span><span id="line-135"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex Doc] -&gt; Int
+forall a. [a] -&gt; Int
+forall (t :: * -&gt; *) a. Foldable t =&gt; t a -&gt; Int
+</span><span class="hs-identifier hs-var">length</span></span><span> </span><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099564"><span class="hs-identifier hs-var">rs</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span>
+</span><span id="line-136"></span><span>          </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; [Doc] -&gt; [Doc]
+</span><span class="hs-identifier hs-var">PP.punctuate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\mid&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(GrammarRegex Doc -&gt; Doc) -&gt; [GrammarRegex Doc] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099564"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-137"></span><span>          </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\begin{gathered}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span>
+</span><span id="line-138"></span><span>               </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; [Doc] -&gt; [Doc]
+</span><span class="hs-identifier hs-var">PP.punctuate</span></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\\\&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(GrammarRegex Doc -&gt; Doc) -&gt; [GrammarRegex Doc] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">[GrammarRegex Doc]
+</span><a href="#local-6989586621679099564"><span class="hs-identifier hs-var">rs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span>
+</span><span id="line-139"></span><span>              </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\end{gathered}&quot;</span></span><span>
+</span><span id="line-140"></span><span>        </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\right\\}&quot;</span></span><span> </span><span class="hs-special">]</span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099569"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099569"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunch"><span class="hs-identifier hs-type">REMunch</span></a></span><span> </span><span id="local-6989586621679099570"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099570"><span class="hs-identifier hs-var">sep</span></a></span></span><span> </span><span id="local-6989586621679099571"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099571"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099569"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-143"></span><span>        </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099571"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}^\\ast_{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099570"><span class="hs-identifier hs-var">sep</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-144"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099572"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099572"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunch1"><span class="hs-identifier hs-type">REMunch1</span></a></span><span> </span><span id="local-6989586621679099573"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099573"><span class="hs-identifier hs-var">sep</span></a></span></span><span> </span><span id="local-6989586621679099574"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099574"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099572"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-145"></span><span>        </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099574"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}^+_{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099573"><span class="hs-identifier hs-var">sep</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-146"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099575"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099575"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REMunchR"><span class="hs-identifier hs-type">REMunchR</span></a></span><span> </span><span id="local-6989586621679099576"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099576"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679099577"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099577"><span class="hs-identifier hs-var">sep</span></a></span></span><span> </span><span id="local-6989586621679099578"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099578"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099575"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-147"></span><span>        </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099578"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}^{\\in [0\\ldots&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.int</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099576"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;]}_{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099577"><span class="hs-identifier hs-var">sep</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-148"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099580"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099580"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REOpt"><span class="hs-identifier hs-type">REOpt</span></a></span><span> </span><span id="local-6989586621679099581"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099581"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099580"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">3</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-149"></span><span>        </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099581"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}^?&quot;</span></span><span>
+</span><span id="line-150"></span><span>
+</span><span id="line-151"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REString"><span class="hs-identifier hs-type">REString</span></a></span><span> </span><span id="local-6989586621679099582"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099582"><span class="hs-identifier hs-var">s</span></a></span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\mathop{\\mathord{``}\\mathtt{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Char -&gt; Doc) -&gt; [Char] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099582"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}\\mathord{\&quot;}}&quot;</span></span><span>
+</span><span id="line-152"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECharSet"><span class="hs-identifier hs-type">RECharSet</span></a></span><span> </span><span id="local-6989586621679099584"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099584"><span class="hs-identifier hs-var">cs</span></a></span></span><span class="hs-special">)</span><span>   </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charsetDoc"><span class="hs-identifier hs-var">charsetDoc</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099584"><span class="hs-identifier hs-var">cs</span></a></span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#RESpaces"><span class="hs-identifier hs-var">RESpaces</span></a></span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\circ&quot;</span></span><span>
+</span><span id="line-155"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#RESpaces1"><span class="hs-identifier hs-var">RESpaces1</span></a></span><span>        </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\bullet&quot;</span></span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECommaList"><span class="hs-identifier hs-type">RECommaList</span></a></span><span> </span><span id="local-6989586621679099586"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099586"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span>
+</span><span id="line-158"></span><span>        </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathrm{commalist}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099586"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-159"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RECommaNonEmpty"><span class="hs-identifier hs-type">RECommaNonEmpty</span></a></span><span> </span><span id="local-6989586621679099587"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099587"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span>  </span><span class="hs-glyph">=</span><span>
+</span><span id="line-160"></span><span>        </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathrm{commanonempty}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099587"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-161"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REOptCommaList"><span class="hs-identifier hs-type">REOptCommaList</span></a></span><span> </span><span id="local-6989586621679099588"><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099588"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-162"></span><span>        </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathrm{optcommalist}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">4</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="#local-6989586621679099588"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-163"></span><span>
+</span><span id="line-164"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#REVar"><span class="hs-identifier hs-type">REVar</span></a></span><span> </span><span id="local-6989586621679099589"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099589"><span class="hs-identifier hs-var">a</span></a></span></span><span class="hs-special">)</span><span>         </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099589"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-165"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RENamed"><span class="hs-identifier hs-type">RENamed</span></a></span><span> </span><span id="local-6989586621679099590"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099590"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span>     </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var">terminalDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099590"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-166"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span id="local-6989586621679099592"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099592"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#RERec"><span class="hs-identifier hs-type">RERec</span></a></span><span> </span><span id="local-6989586621679099593"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099593"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span id="local-6989586621679099594"><span class="annot"><span class="annottext">GrammarRegex (Maybe Doc)
+</span><a href="#local-6989586621679099594"><span class="hs-identifier hs-var">r</span></a></span></span><span class="hs-special">)</span><span>       </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679099592"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-167"></span><span>        </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathbf{fix}\\;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099595"><span class="hs-identifier hs-var">n'</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\;\\mathbf{in}\\;&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span>
+</span><span id="line-168"></span><span>        </span><span class="annot"><span class="annottext">Int -&gt; GrammarRegex Doc -&gt; Doc
+</span><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Maybe Doc -&gt; Doc) -&gt; GrammarRegex (Maybe Doc) -&gt; GrammarRegex Doc
+forall a b. (a -&gt; b) -&gt; GrammarRegex a -&gt; GrammarRegex b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; Maybe Doc -&gt; Doc
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099595"><span class="hs-identifier hs-var">n'</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">GrammarRegex (Maybe Doc)
+</span><a href="#local-6989586621679099594"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-169"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-170"></span><span>        </span><span id="local-6989586621679099595"><span class="annot"><span class="annottext">n' :: Doc
+</span><a href="#local-6989586621679099595"><span class="hs-identifier hs-var hs-var">n'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var">terminalDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099593"><span class="hs-identifier hs-var">n</span></a></span><span>
+</span><span id="line-171"></span><span>
+</span><span id="line-172"></span><span>    </span><span class="annot"><a href="#local-6989586621679099556"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">GrammarRegex Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#RETodo"><span class="hs-identifier hs-var">RETodo</span></a></span><span>            </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\mathsf{\\color{red}{TODO}}&quot;</span></span><span>
+</span><span id="line-173"></span><span>
+</span><span id="line-174"></span><span>    </span><span class="annot"><a href="#local-6989586621679099559"><span class="hs-identifier hs-type">parensIf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-175"></span><span>    </span><span id="local-6989586621679099559"><span class="annot"><span class="annottext">parensIf :: Bool -&gt; Doc -&gt; Doc
+</span><a href="#local-6989586621679099559"><span class="hs-identifier hs-var hs-var">parensIf</span></a></span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>  </span><span id="local-6989586621679099596"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099596"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\left(&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099596"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\right)&quot;</span></span><span>
+</span><span id="line-176"></span><span>    </span><span class="annot"><a href="#local-6989586621679099559"><span class="hs-identifier hs-var">parensIf</span></a></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span> </span><span id="local-6989586621679099597"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099597"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099597"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-177"></span><span>
+</span><span id="line-178"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-type">terminalDoc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-179"></span><span id="terminalDoc"><span class="annot"><span class="annottext">terminalDoc :: [Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var hs-var">terminalDoc</span></a></span></span><span> </span><span id="local-6989586621679099598"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099598"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\mathop{\\mathit{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Char -&gt; Doc) -&gt; [Char] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679099598"><span class="hs-identifier hs-var">s</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}}&quot;</span></span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-type">charDoc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-182"></span><span id="charDoc"><span class="annot"><span class="annottext">charDoc :: Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var hs-var">charDoc</span></a></span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">' '</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\ &quot;</span></span><span>
+</span><span id="line-183"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'{'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\{&quot;</span></span><span>
+</span><span id="line-184"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'}'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\}&quot;</span></span><span>
+</span><span id="line-185"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><span class="hs-char">'\\'</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\text{\\\\}&quot;</span></span><span>
+</span><span id="line-186"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span id="local-6989586621679099599"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span></span><span>
+</span><span id="line-187"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isAlphaNum</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.char</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span><span>
+</span><span id="line-188"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char -&gt; Bool
+</span><span class="hs-identifier hs-var">isControl</span></span><span>  </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Char -&gt; Int
+</span><span class="hs-identifier hs-var">ord</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-comment">-- TODO: some syntax</span><span>
+</span><span id="line-189"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\text{&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099599"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; ShowS
+forall a. a -&gt; [a] -&gt; [a]
+</span><span class="hs-glyph hs-var">:</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;}&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span>
+</span><span id="line-191"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-type">inquotes</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-192"></span><span id="inquotes"><span class="annot"><span class="annottext">inquotes :: Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-var hs-var">inquotes</span></a></span></span><span> </span><span id="local-6989586621679099602"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099602"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathop{\\mathord{``}&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099602"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathord{\&quot;}}&quot;</span></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-type">mathtt</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-195"></span><span id="mathtt"><span class="annot"><span class="annottext">mathtt :: Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-var hs-var">mathtt</span></a></span></span><span> </span><span id="local-6989586621679099604"><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099604"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\mathtt{&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><a href="#local-6989586621679099604"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;}&quot;</span></span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charsetDoc"><span class="hs-identifier hs-type">charsetDoc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Distribution.Utils.CharSet.html#CharSet"><span class="hs-identifier hs-type">CS.CharSet</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-198"></span><span id="charsetDoc"><span class="annot"><span class="annottext">charsetDoc :: CharSet -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charsetDoc"><span class="hs-identifier hs-var hs-var">charsetDoc</span></a></span></span><span> </span><span id="local-6989586621679099605"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099605"><span class="hs-identifier hs-var">acs</span></a></span></span><span>
+</span><span id="line-199"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099605"><span class="hs-identifier hs-var">acs</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="Distribution.Utils.CharSet.html#alpha"><span class="hs-identifier hs-var">CS.alpha</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var">terminalDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;alpha&quot;</span></span><span>
+</span><span id="line-200"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099605"><span class="hs-identifier hs-var">acs</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="Distribution.Utils.CharSet.html#alphanum"><span class="hs-identifier hs-var">CS.alphanum</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var">terminalDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;alpha-num&quot;</span></span><span>
+</span><span id="line-201"></span><span>    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099605"><span class="hs-identifier hs-var">acs</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="Distribution.Utils.CharSet.html#upper"><span class="hs-identifier hs-var">CS.upper</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#terminalDoc"><span class="hs-identifier hs-var">terminalDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;upper&quot;</span></span><span>
+</span><span id="line-202"></span><span class="annot"><a href="Distribution.Utils.GrammarRegex.html#charsetDoc"><span class="hs-identifier hs-var">charsetDoc</span></a></span><span> </span><span id="local-6989586621679099609"><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099609"><span class="hs-identifier hs-var">acs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; [(Char, Char)]
+</span><a href="Distribution.Utils.CharSet.html#toIntervalList"><span class="hs-identifier hs-var">CS.toIntervalList</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099609"><span class="hs-identifier hs-var">acs</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-203"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">]</span><span>               </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Doc
+</span><span class="hs-string">&quot;\\emptyset&quot;</span></span><span>
+</span><span id="line-204"></span><span>    </span><span class="hs-special">[</span><span class="hs-special">(</span><span id="local-6989586621679099611"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099611"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span id="local-6989586621679099612"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099612"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099611"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099612"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-var">inquotes</span></a></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-var">mathtt</span></a></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099611"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-205"></span><span>    </span><span id="local-6989586621679099613"><span class="annot"><span class="annottext">[(Char, Char)]
+</span><a href="#local-6989586621679099613"><span class="hs-identifier hs-var">rs</span></a></span></span><span>
+</span><span id="line-206"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; Int
+</span><a href="Distribution.Utils.CharSet.html#size"><span class="hs-identifier hs-var">CS.size</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099609"><span class="hs-identifier hs-var">acs</span></a></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&lt;=</span></span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; Int
+</span><a href="Distribution.Utils.CharSet.html#size"><span class="hs-identifier hs-var">CS.size</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099616"><span class="hs-identifier hs-var">notAcs</span></a></span><span>
+</span><span id="line-207"></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.brackets</span></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="annot"><span class="annottext">([Doc] -&gt; Doc) -&gt; [Doc] -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">((Char, Char) -&gt; Doc) -&gt; [(Char, Char)] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; Doc
+</span><a href="#local-6989586621679099618"><span class="hs-identifier hs-var">rangeDoc</span></a></span><span> </span><span class="annot"><span class="annottext">[(Char, Char)]
+</span><a href="#local-6989586621679099613"><span class="hs-identifier hs-var">rs</span></a></span><span>
+</span><span id="line-208"></span><span>        </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span>
+</span><span id="line-209"></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.braces</span></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.brackets</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Doc] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.hcat</span></span><span> </span><span class="annot"><span class="annottext">([Doc] -&gt; Doc) -&gt; [Doc] -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">((Char, Char) -&gt; Doc) -&gt; [(Char, Char)] -&gt; [Doc]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">(Char, Char) -&gt; Doc
+</span><a href="#local-6989586621679099618"><span class="hs-identifier hs-var">rangeDoc</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">CharSet -&gt; [(Char, Char)]
+</span><a href="Distribution.Utils.CharSet.html#toIntervalList"><span class="hs-identifier hs-var">CS.toIntervalList</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099616"><span class="hs-identifier hs-var">notAcs</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;^c&quot;</span></span><span>
+</span><span id="line-210"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-211"></span><span>    </span><span id="local-6989586621679099616"><span class="annot"><span class="annottext">notAcs :: CharSet
+</span><a href="#local-6989586621679099616"><span class="hs-identifier hs-var hs-var">notAcs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">CharSet -&gt; CharSet
+</span><a href="Distribution.Utils.CharSet.html#complement"><span class="hs-identifier hs-var">CS.complement</span></a></span><span> </span><span class="annot"><span class="annottext">CharSet
+</span><a href="#local-6989586621679099609"><span class="hs-identifier hs-var">acs</span></a></span><span>
+</span><span id="line-212"></span><span>
+</span><span id="line-213"></span><span>    </span><span class="annot"><a href="#local-6989586621679099618"><span class="hs-identifier hs-type">rangeDoc</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">PP.Doc</span></span><span>
+</span><span id="line-214"></span><span>    </span><span id="local-6989586621679099618"><span class="annot"><span class="annottext">rangeDoc :: (Char, Char) -&gt; Doc
+</span><a href="#local-6989586621679099618"><span class="hs-identifier hs-var hs-var">rangeDoc</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679099621"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099621"><span class="hs-identifier hs-var">x</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099622"><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099622"><span class="hs-identifier hs-var">y</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099621"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Char -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099622"><span class="hs-identifier hs-var">y</span></a></span><span>    </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-var">inquotes</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-var">mathtt</span></a></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099621"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-215"></span><span>                    </span><span class="hs-glyph">|</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">otherwise</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-var">inquotes</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-var">mathtt</span></a></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099621"><span class="hs-identifier hs-var">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Doc
+</span><span class="hs-identifier hs-var">PP.text</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;\\cdots&quot;</span></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#%3C%3C%3E%3E"><span class="hs-operator hs-var">&lt;&lt;&gt;&gt;</span></a></span><span> </span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#inquotes"><span class="hs-identifier hs-var">inquotes</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Doc -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#mathtt"><span class="hs-identifier hs-var">mathtt</span></a></span><span> </span><span class="annot"><span class="annottext">(Doc -&gt; Doc) -&gt; Doc -&gt; Doc
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Doc
+</span><a href="Distribution.Utils.GrammarRegex.html#charDoc"><span class="hs-identifier hs-var">charDoc</span></a></span><span> </span><span class="annot"><span class="annottext">Char
+</span><a href="#local-6989586621679099622"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-216"></span></pre></body></html>

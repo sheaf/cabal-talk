@@ -1,0 +1,776 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE ConstraintKinds #-}</span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# LANGUAGE DuplicateRecordFields #-}</span><span>
+</span><span id="line-4"></span><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# LANGUAGE RecordWildCards #-}</span><span>
+</span><span id="line-6"></span><span class="hs-pragma">{-# LANGUAGE ScopedTypeVariables #-}</span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Distribution.Client.SetupHooks.HooksExe</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#hooksMain"><span class="hs-identifier">hooksMain</span></a></span><span> </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- base</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.Environment</span></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">getArgs</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.IO</span></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">Handle</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hClose</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hFlush</span></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- bytestring</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LBS</span></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-identifier">hGetContents</span></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">hPutStr</span></span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">null</span></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span class="hs-comment">-- containers</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Map</span></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-comment">-- process</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\process-1.6.20.0-bf6b7fb0215b97c565fa60d8116a7029aaf0c146\share\doc\html\src/System.Process.CommunicationHandle.html"><span class="hs-identifier">System.Process.CommunicationHandle</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\process-1.6.20.0-bf6b7fb0215b97c565fa60d8116a7029aaf0c146\share\doc\html\src/System.Process.CommunicationHandle.html#openCommunicationHandleRead"><span class="hs-identifier">openCommunicationHandleRead</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\process-1.6.20.0-bf6b7fb0215b97c565fa60d8116a7029aaf0c146\share\doc\html\src/System.Process.CommunicationHandle.html#openCommunicationHandleWrite"><span class="hs-identifier">openCommunicationHandleWrite</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">-- Cabal</span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Compat.Prelude.html"><span class="hs-identifier">Distribution.Compat.Prelude</span></a></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Compat.Binary.html"><span class="hs-identifier">Distribution.Compat.Binary</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Binary</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html"><span class="hs-identifier">Distribution.Simple.SetupHooks.Internal</span></a></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Rule.html"><span class="hs-identifier">Distribution.Simple.SetupHooks.Rule</span></a></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html"><span class="hs-identifier">Distribution.Simple.Utils</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier">dieWithException</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Types.Component.html"><span class="hs-identifier">Distribution.Types.Component</span></a></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Types.Component.html#componentName"><span class="hs-identifier">componentName</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Types.LocalBuildConfig.html"><span class="hs-identifier">Distribution.Types.LocalBuildConfig</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LBC</span></span><span>
+</span><span id="line-43"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html"><span class="hs-identifier">Distribution.Verbosity</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Verbosity</span></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- hooks-exe</span><span>
+</span><span id="line-46"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html"><span class="hs-identifier">Distribution.Client.SetupHooks.HooksExe.Errors</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#SetupHooksExeException"><span class="hs-identifier">SetupHooksExeException</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#BadHooksExecutableArgs"><span class="hs-identifier">BadHooksExecutableArgs</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">)</span><span>
+</span><span id="line-50"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.Version.html"><span class="hs-identifier">Distribution.Client.SetupHooks.Version</span></a></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.Version.html#hooksVersion"><span class="hs-identifier">hooksVersion</span></a></span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- | Create a hooks executable given 'SetupHooks':</span><span>
+</span><span id="line-56"></span><span class="hs-comment">--</span><span>
+</span><span id="line-57"></span><span class="hs-comment">--  - the first two argument are references to input &amp; output communication</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--    handles,</span><span>
+</span><span id="line-59"></span><span class="hs-comment">--  - the second argument is the hook type.</span><span>
+</span><span id="line-60"></span><span class="hs-comment">--</span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- The hook reads binary data passed to it over the input handle, decodes it,</span><span>
+</span><span id="line-62"></span><span class="hs-comment">-- runs the hook, and encodes its result to binary, writing the result to the</span><span>
+</span><span id="line-63"></span><span class="hs-comment">-- output handle.</span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#hooksMain"><span class="hs-identifier hs-type">hooksMain</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span id="hooksMain"><span class="annot"><span class="annottext">hooksMain :: SetupHooks -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#hooksMain"><span class="hs-identifier hs-var hs-var">hooksMain</span></a></span></span><span> </span><span id="local-6989586621679104832"><span class="annot"><span class="annottext">SetupHooks
+</span><a href="#local-6989586621679104832"><span class="hs-identifier hs-var">setupHooks</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679104833"><span class="annot"><span class="annottext">[[Char]]
+</span><a href="#local-6989586621679104833"><span class="hs-identifier hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO [[Char]]
+</span><span class="hs-identifier hs-var">getArgs</span></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[[Char]]
+</span><a href="#local-6989586621679104833"><span class="hs-identifier hs-var">args</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-68"></span><span>    </span><span class="hs-comment">-- First two arguments are references to read/write handles the hooks executable should use.</span><span>
+</span><span id="line-69"></span><span>    </span><span id="local-6989586621679104834"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104834"><span class="hs-identifier hs-var">inputFdRef</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679104835"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104835"><span class="hs-identifier hs-var">outputFdRef</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span id="local-6989586621679104836"><span class="annot"><span class="annottext">[[Char]]
+</span><a href="#local-6989586621679104836"><span class="hs-identifier hs-var">hooksExeArgs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-70"></span><span>      </span><span id="local-6989586621679104837"><span class="annot"><span class="annottext">Maybe Handle
+</span><a href="#local-6989586621679104837"><span class="hs-identifier hs-var">hReadMb</span></a></span></span><span>  </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(CommunicationHandle -&gt; IO Handle)
+-&gt; Maybe CommunicationHandle -&gt; IO (Maybe Handle)
+forall (t :: * -&gt; *) (f :: * -&gt; *) a b.
+(Traversable t, Applicative f) =&gt;
+(a -&gt; f b) -&gt; t a -&gt; f (t b)
+forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; Maybe a -&gt; f (Maybe b)
+</span><span class="hs-identifier hs-var">traverse</span></span><span> </span><span class="annot"><span class="annottext">CommunicationHandle -&gt; IO Handle
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\process-1.6.20.0-bf6b7fb0215b97c565fa60d8116a7029aaf0c146\share\doc\html\src/System.Process.CommunicationHandle.html#openCommunicationHandleRead"><span class="hs-identifier hs-var">openCommunicationHandleRead</span></a></span><span>  </span><span class="annot"><span class="annottext">(Maybe CommunicationHandle -&gt; IO (Maybe Handle))
+-&gt; Maybe CommunicationHandle -&gt; IO (Maybe Handle)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Maybe CommunicationHandle
+forall a. Read a =&gt; [Char] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">readMaybe</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104834"><span class="hs-identifier hs-var">inputFdRef</span></a></span><span>
+</span><span id="line-71"></span><span>      </span><span id="local-6989586621679104840"><span class="annot"><span class="annottext">Maybe Handle
+</span><a href="#local-6989586621679104840"><span class="hs-identifier hs-var">hWriteMb</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(CommunicationHandle -&gt; IO Handle)
+-&gt; Maybe CommunicationHandle -&gt; IO (Maybe Handle)
+forall (t :: * -&gt; *) (f :: * -&gt; *) a b.
+(Traversable t, Applicative f) =&gt;
+(a -&gt; f b) -&gt; t a -&gt; f (t b)
+forall (f :: * -&gt; *) a b.
+Applicative f =&gt;
+(a -&gt; f b) -&gt; Maybe a -&gt; f (Maybe b)
+</span><span class="hs-identifier hs-var">traverse</span></span><span> </span><span class="annot"><span class="annottext">CommunicationHandle -&gt; IO Handle
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\process-1.6.20.0-bf6b7fb0215b97c565fa60d8116a7029aaf0c146\share\doc\html\src/System.Process.CommunicationHandle.html#openCommunicationHandleWrite"><span class="hs-identifier hs-var">openCommunicationHandleWrite</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe CommunicationHandle -&gt; IO (Maybe Handle))
+-&gt; Maybe CommunicationHandle -&gt; IO (Maybe Handle)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; Maybe CommunicationHandle
+forall a. Read a =&gt; [Char] -&gt; Maybe a
+</span><span class="hs-identifier hs-var">readMaybe</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104835"><span class="hs-identifier hs-var">outputFdRef</span></a></span><span>
+</span><span id="line-72"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe Handle
+</span><a href="#local-6989586621679104837"><span class="hs-identifier hs-var">hReadMb</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-73"></span><span>        </span><span class="annot"><span class="annottext">Maybe Handle
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-74"></span><span>          </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ())
+-&gt; SetupHooksExeException -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-75"></span><span>            </span><span class="annot"><span class="annottext">Maybe [Char] -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#NoHandle"><span class="hs-identifier hs-var">NoHandle</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; Maybe [Char]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; Maybe [Char]) -&gt; [Char] -&gt; Maybe [Char]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;hook input communication handle '&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104834"><span class="hs-identifier hs-var">inputFdRef</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;'&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679104843"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104843"><span class="hs-identifier hs-var">hRead</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-77"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe Handle
+</span><a href="#local-6989586621679104840"><span class="hs-identifier hs-var">hWriteMb</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-78"></span><span>            </span><span class="annot"><span class="annottext">Maybe Handle
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-79"></span><span>              </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ())
+-&gt; SetupHooksExeException -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-80"></span><span>                </span><span class="annot"><span class="annottext">Maybe [Char] -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#NoHandle"><span class="hs-identifier hs-var">NoHandle</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char] -&gt; Maybe [Char]
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">([Char] -&gt; Maybe [Char]) -&gt; [Char] -&gt; Maybe [Char]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;hook output communication handle '&quot;</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104835"><span class="hs-identifier hs-var">outputFdRef</span></a></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; [Char] -&gt; [Char]
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;'&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679104844"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104844"><span class="hs-identifier hs-var">hWrite</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-82"></span><span>              </span><span class="hs-comment">-- Third argument is the hook to run.</span><span>
+</span><span id="line-83"></span><span>              </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[[Char]]
+</span><a href="#local-6989586621679104836"><span class="hs-identifier hs-var">hooksExeArgs</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-84"></span><span>                </span><span id="local-6989586621679104845"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104845"><span class="hs-identifier hs-var">hookName</span></a></span></span><span> </span><span class="annot"><span class="hs-glyph hs-type">:</span></span><span> </span><span class="annot"><span class="annottext">[[Char]]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-85"></span><span>                  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">[Char]
+-&gt; [([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ())]
+-&gt; Maybe ((Handle, Handle) -&gt; SetupHooks -&gt; IO ())
+forall a b. Eq a =&gt; a -&gt; [(a, b)] -&gt; Maybe b
+</span><span class="hs-identifier hs-var">lookup</span></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104845"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">[([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ())]
+</span><a href="#local-6989586621679104847"><span class="hs-identifier hs-var">allHookHandlers</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-86"></span><span>                    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679104848"><span class="annot"><span class="annottext">(Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="#local-6989586621679104848"><span class="hs-identifier hs-var">handleAction</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-87"></span><span>                      </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="#local-6989586621679104848"><span class="hs-identifier hs-var">handleAction</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104843"><span class="hs-identifier hs-var">hRead</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104844"><span class="hs-identifier hs-var">hWrite</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">SetupHooks
+</span><a href="#local-6989586621679104832"><span class="hs-identifier hs-var">setupHooks</span></a></span><span>
+</span><span id="line-88"></span><span>                    </span><span class="annot"><span class="annottext">Maybe ((Handle, Handle) -&gt; SetupHooks -&gt; IO ())
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-89"></span><span>                      </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ())
+-&gt; SetupHooksExeException -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-90"></span><span>                        </span><span class="annot"><span class="annottext">[Char] -&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#BadHooksExeArgs"><span class="hs-identifier hs-var">BadHooksExeArgs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104845"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(BadHooksExecutableArgs -&gt; SetupHooksExeException)
+-&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-91"></span><span>                          </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#UnknownHookType"><span class="hs-identifier hs-type">UnknownHookType</span></a></span><span>
+</span><span id="line-92"></span><span>                            </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">knownHookTypes :: [[Char]]
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#knownHookTypes"><span class="hs-identifier hs-var">knownHookTypes</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; [Char])
+-&gt; [([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ())] -&gt; [[Char]]
+forall a b. (a -&gt; b) -&gt; [a] -&gt; [b]
+</span><span class="hs-identifier hs-var">map</span></span><span> </span><span class="annot"><span class="annottext">([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; [Char]
+forall a b. (a, b) -&gt; a
+</span><span class="hs-identifier hs-var">fst</span></span><span> </span><span class="annot"><span class="annottext">[([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ())]
+</span><a href="#local-6989586621679104847"><span class="hs-identifier hs-var">allHookHandlers</span></a></span><span>
+</span><span id="line-93"></span><span>                            </span><span class="hs-special">}</span><span>
+</span><span id="line-94"></span><span>                </span><span class="annot"><span class="annottext">[[Char]]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#NoHookType"><span class="hs-identifier hs-var">NoHookType</span></a></span><span>
+</span><span id="line-95"></span><span>    </span><span class="annot"><span class="annottext">[[Char]]
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ())
+-&gt; SetupHooksExeException -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-96"></span><span>           </span><span class="annot"><span class="annottext">Maybe [Char] -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#NoHandle"><span class="hs-identifier hs-var">NoHandle</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe [Char]
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-98"></span><span>    </span><span id="local-6989586621679104847"><span class="annot"><span class="annottext">allHookHandlers :: [([Char], (Handle, Handle) -&gt; SetupHooks -&gt; IO ())]
+</span><a href="#local-6989586621679104847"><span class="hs-identifier hs-var hs-var">allHookHandlers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-99"></span><span>      </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104854"><span class="hs-identifier hs-var">nm</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="#local-6989586621679104855"><span class="hs-identifier hs-var">action</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>      </span><span class="hs-glyph">|</span><span> </span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-type">HookHandler</span></a></span><span>
+</span><span id="line-101"></span><span>          </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">$sel:hookName:HookHandler :: HookHandler -&gt; [Char]
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#%24sel%3AhookName%3AHookHandler"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679104854"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104854"><span class="hs-identifier hs-var">nm</span></a></span></span><span>
+</span><span id="line-102"></span><span>          </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">$sel:hookHandler:HookHandler :: HookHandler -&gt; (Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#%24sel%3AhookHandler%3AHookHandler"><span class="hs-identifier hs-var">hookHandler</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679104855"><span class="annot"><span class="annottext">(Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="#local-6989586621679104855"><span class="hs-identifier hs-var">action</span></a></span></span><span>
+</span><span id="line-103"></span><span>          </span><span class="hs-special">}</span><span> </span><span class="hs-glyph">&lt;-</span><span>
+</span><span id="line-104"></span><span>          </span><span class="annot"><span class="annottext">[HookHandler]
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#hookHandlers"><span class="hs-identifier hs-var">hookHandlers</span></a></span><span>
+</span><span id="line-105"></span><span>      </span><span class="hs-special">]</span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span class="hs-comment">-- | Implementation of a particular hook in a separate hooks executable,</span><span>
+</span><span id="line-108"></span><span class="hs-comment">-- which communicates through the given 'Handle's.</span><span>
+</span><span id="line-109"></span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-type">runHookHandle</span></a></span><span>
+</span><span id="line-110"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679104667"><span class="annot"><a href="#local-6989586621679104667"><span class="hs-identifier hs-type">inputs</span></a></span></span><span> </span><span id="local-6989586621679104668"><span class="annot"><a href="#local-6989586621679104668"><span class="hs-identifier hs-type">outputs</span></a></span></span><span>
+</span><span id="line-111"></span><span>   </span><span class="hs-operator">.</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679104667"><span class="hs-identifier hs-type">inputs</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Binary</span></span><span> </span><span class="annot"><a href="#local-6989586621679104668"><span class="hs-identifier hs-type">outputs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Handle</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Handle</span></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>  </span><span class="annot"><span class="hs-comment">-- ^ Input/output communication handles</span></span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-115"></span><span>  </span><span class="annot"><span class="hs-comment">-- ^ Hook name</span></span><span>
+</span><span id="line-116"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679104667"><span class="hs-identifier hs-type">inputs</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679104668"><span class="hs-identifier hs-type">outputs</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-comment">-- ^ Hook to run</span><span>
+</span><span id="line-118"></span><span>  </span><span class="hs-comment">--</span><span>
+</span><span id="line-119"></span><span>  </span><span class="hs-comment">-- Inputs are passed via the input handle, and outputs are written to the</span><span>
+</span><span id="line-120"></span><span>  </span><span class="hs-comment">-- output handle.</span><span>
+</span><span id="line-121"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-122"></span><span id="runHookHandle"><span class="annot"><span class="annottext">runHookHandle :: forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var hs-var">runHookHandle</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679104873"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104873"><span class="hs-identifier hs-var">hRead</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104874"><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104874"><span class="hs-identifier hs-var">hWrite</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679104875"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104875"><span class="hs-identifier hs-var">hookName</span></a></span></span><span> </span><span id="local-6989586621679104876"><span class="annot"><span class="annottext">inputs -&gt; IO outputs
+</span><a href="#local-6989586621679104876"><span class="hs-identifier hs-var">hook</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-123"></span><span>  </span><span id="local-6989586621679104877"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679104877"><span class="hs-identifier hs-var">inputsData</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Handle -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">LBS.hGetContents</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104873"><span class="hs-identifier hs-var">hRead</span></a></span><span>
+</span><span id="line-124"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104879"><span class="annot"><span class="annottext">mb_inputs :: Either
+  (ByteString, ByteOffset, [Char]) (ByteString, ByteOffset, inputs)
+</span><a href="#local-6989586621679104879"><span class="hs-identifier hs-var hs-var">mb_inputs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString
+-&gt; Either
+     (ByteString, ByteOffset, [Char]) (ByteString, ByteOffset, inputs)
+forall a.
+Binary a =&gt;
+ByteString
+-&gt; Either
+     (ByteString, ByteOffset, [Char]) (ByteString, ByteOffset, a)
+</span><span class="hs-identifier hs-var">Binary.decodeOrFail</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679104877"><span class="hs-identifier hs-var">inputsData</span></a></span><span>
+</span><span id="line-125"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either
+  (ByteString, ByteOffset, [Char]) (ByteString, ByteOffset, inputs)
+</span><a href="#local-6989586621679104879"><span class="hs-identifier hs-var">mb_inputs</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-126"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ByteString
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104881"><span class="annot"><span class="annottext">ByteOffset
+</span><a href="#local-6989586621679104881"><span class="hs-identifier hs-var">offset</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104882"><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104882"><span class="hs-identifier hs-var">err</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-127"></span><span>      </span><span class="annot"><span class="annottext">Verbosity -&gt; SetupHooksExeException -&gt; IO ()
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ())
+-&gt; SetupHooksExeException -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-128"></span><span>        </span><span class="annot"><span class="annottext">[Char] -&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#BadHooksExeArgs"><span class="hs-identifier hs-var">BadHooksExeArgs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104875"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(BadHooksExecutableArgs -&gt; SetupHooksExeException)
+-&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-129"></span><span>          </span><span class="annot"><span class="annottext">ByteString -&gt; ByteOffset -&gt; [Char] -&gt; BadHooksExecutableArgs
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#CouldNotDecodeInput"><span class="hs-identifier hs-var">CouldNotDecodeInput</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679104877"><span class="hs-identifier hs-var">inputsData</span></a></span><span> </span><span class="annot"><span class="annottext">ByteOffset
+</span><a href="#local-6989586621679104881"><span class="hs-identifier hs-var">offset</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104882"><span class="hs-identifier hs-var">err</span></a></span><span>
+</span><span id="line-130"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ByteString
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">ByteOffset
+</span><span class="hs-identifier">_</span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104884"><span class="annot"><span class="annottext">inputs
+</span><a href="#local-6989586621679104884"><span class="hs-identifier hs-var">inputs</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-131"></span><span>      </span><span id="local-6989586621679104885"><span class="annot"><span class="annottext">outputs
+</span><a href="#local-6989586621679104885"><span class="hs-identifier hs-var">output</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">inputs -&gt; IO outputs
+</span><a href="#local-6989586621679104876"><span class="hs-identifier hs-var">hook</span></a></span><span> </span><span class="annot"><span class="annottext">inputs
+</span><a href="#local-6989586621679104884"><span class="hs-identifier hs-var">inputs</span></a></span><span>
+</span><span id="line-132"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104887"><span class="annot"><span class="annottext">outputData :: ByteString
+</span><a href="#local-6989586621679104887"><span class="hs-identifier hs-var hs-var">outputData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">outputs -&gt; ByteString
+forall a. Binary a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">Binary.encode</span></span><span> </span><span class="annot"><span class="annottext">outputs
+</span><a href="#local-6989586621679104885"><span class="hs-identifier hs-var">output</span></a></span><span>
+</span><span id="line-133"></span><span>      </span><span class="annot"><span class="annottext">Bool -&gt; IO () -&gt; IO ()
+forall (f :: * -&gt; *). Applicative f =&gt; Bool -&gt; f () -&gt; f ()
+</span><span class="hs-identifier hs-var">unless</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ByteString -&gt; Bool
+</span><span class="hs-identifier hs-var">LBS.null</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679104887"><span class="hs-identifier hs-var">outputData</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-134"></span><span>        </span><span class="annot"><span class="annottext">Handle -&gt; ByteString -&gt; IO ()
+</span><span class="hs-identifier hs-var">LBS.hPutStr</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104874"><span class="hs-identifier hs-var">hWrite</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679104887"><span class="hs-identifier hs-var">outputData</span></a></span><span>
+</span><span id="line-135"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hFlush</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104874"><span class="hs-identifier hs-var">hWrite</span></a></span><span>
+</span><span id="line-136"></span><span>      </span><span class="annot"><span class="annottext">Handle -&gt; IO ()
+</span><span class="hs-identifier hs-var">hClose</span></span><span> </span><span class="annot"><span class="annottext">Handle
+</span><a href="#local-6989586621679104874"><span class="hs-identifier hs-var">hWrite</span></a></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="hs-keyword">data</span><span> </span><span id="HookHandler"><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="HookHandler"><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span></span><span>
+</span><span id="line-139"></span><span>  </span><span class="hs-special">{</span><span> </span><span id="%24sel%3AhookName%3AHookHandler"><span class="annot"><span class="annottext">HookHandler -&gt; [Char]
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#%24sel%3AhookName%3AHookHandler"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-140"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="%24sel%3AhookHandler%3AHookHandler"><span class="annot"><span class="annottext">HookHandler -&gt; (Handle, Handle) -&gt; SetupHooks -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#%24sel%3AhookHandler%3AHookHandler"><span class="hs-identifier hs-var hs-var">hookHandler</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Handle</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Handle</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-141"></span><span>  </span><span class="hs-special">}</span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#hookHandlers"><span class="hs-identifier hs-type">hookHandlers</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-type">HookHandler</span></a></span><span class="hs-special">]</span><span>
+</span><span id="line-144"></span><span id="hookHandlers"><span class="annot"><span class="annottext">hookHandlers :: [HookHandler]
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#hookHandlers"><span class="hs-identifier hs-var hs-var">hookHandlers</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-145"></span><span>  </span><span class="hs-special">[</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104891"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104891"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;version&quot;</span></span><span>
+</span><span id="line-146"></span><span>    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104891"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104892"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104892"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="annot"><span class="annottext">SetupHooks
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-147"></span><span>          </span><span class="hs-comment">-- Print the API version and ABI hash for the hooks executable.</span><span>
+</span><span id="line-148"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; (() -&gt; IO HooksVersion) -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104892"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104891"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">((() -&gt; IO HooksVersion) -&gt; IO ())
+-&gt; (() -&gt; IO HooksVersion) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-149"></span><span>            </span><span class="annot"><span class="annottext">HooksVersion -&gt; IO HooksVersion
+forall a. a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(HooksVersion -&gt; IO HooksVersion)
+-&gt; HooksVersion -&gt; IO HooksVersion
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">HooksVersion
+</span><a href="Distribution.Client.SetupHooks.Version.html#hooksVersion"><span class="hs-identifier hs-var">hooksVersion</span></a></span><span>
+</span><span id="line-150"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104894"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104894"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;preConfPackage&quot;</span></span><span>
+</span><span id="line-151"></span><span>        </span><span id="local-6989586621679104903"><span class="annot"><span class="annottext">noHook :: PreConfPackageInputs -&gt; m PreConfPackageOutputs
+</span><a href="#local-6989586621679104903"><span class="hs-identifier hs-var hs-var">noHook</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#PreConfPackageInputs"><span class="hs-identifier hs-type">PreConfPackageInputs</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:localBuildConfig:PreConfPackageInputs :: PreConfPackageInputs -&gt; LocalBuildConfig
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AlocalBuildConfig%3APreConfPackageInputs"><span class="hs-identifier hs-var">localBuildConfig</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679104906"><span class="annot"><span class="annottext">LocalBuildConfig
+</span><a href="#local-6989586621679104906"><span class="hs-identifier hs-var">lbc</span></a></span></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-152"></span><span>          </span><span class="annot"><span class="annottext">PreConfPackageOutputs -&gt; m PreConfPackageOutputs
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(PreConfPackageOutputs -&gt; m PreConfPackageOutputs)
+-&gt; PreConfPackageOutputs -&gt; m PreConfPackageOutputs
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-153"></span><span>            </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#PreConfPackageOutputs"><span class="hs-identifier hs-type">PreConfPackageOutputs</span></a></span><span>
+</span><span id="line-154"></span><span>              </span><span class="hs-special">{</span><span> </span><span class="annot"><span class="annottext">$sel:buildOptions:PreConfPackageOutputs :: BuildOptions
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AbuildOptions%3APreConfPackageOutputs"><span class="hs-identifier hs-var">buildOptions</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">LocalBuildConfig -&gt; BuildOptions
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Types.LocalBuildConfig.html#%24sel%3AwithBuildOptions%3ALocalBuildConfig"><span class="hs-identifier hs-var">LBC.withBuildOptions</span></a></span><span> </span><span class="annot"><span class="annottext">LocalBuildConfig
+</span><a href="#local-6989586621679104906"><span class="hs-identifier hs-var">lbc</span></a></span><span>
+</span><span id="line-155"></span><span>              </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">$sel:extraConfiguredProgs:PreConfPackageOutputs :: ConfiguredProgs
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AextraConfiguredProgs%3APreConfPackageOutputs"><span class="hs-identifier hs-var">extraConfiguredProgs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ConfiguredProgs
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">Map.empty</span></span><span>
+</span><span id="line-156"></span><span>              </span><span class="hs-special">}</span><span>
+</span><span id="line-157"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104894"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104912"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104912"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:configureHooks:SetupHooks :: SetupHooks -&gt; ConfigureHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AconfigureHooks%3ASetupHooks"><span class="hs-identifier hs-var">configureHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#ConfigureHooks"><span class="hs-identifier hs-type">ConfigureHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679104915"><span id="local-6989586621679104916"><span id="local-6989586621679104917"><span class="annot"><span class="annottext">Maybe PreConfComponentHook
+Maybe PostConfPackageHook
+Maybe PreConfPackageHook
+preConfPackageHook :: Maybe PreConfPackageHook
+postConfPackageHook :: Maybe PostConfPackageHook
+preConfComponentHook :: Maybe PreConfComponentHook
+$sel:preConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfPackageHook
+$sel:postConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PostConfPackageHook
+$sel:preConfComponentHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfComponentHook
+</span><a href="#local-6989586621679104915"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-158"></span><span>          </span><span class="hs-comment">-- Run the package-wide pre-configure hook.</span><span>
+</span><span id="line-159"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; PreConfPackageHook -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104912"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104894"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(PreConfPackageHook -&gt; IO ()) -&gt; PreConfPackageHook -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PreConfPackageHook
+-&gt; Maybe PreConfPackageHook -&gt; PreConfPackageHook
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">PreConfPackageHook
+forall {m :: * -&gt; *}.
+Monad m =&gt;
+PreConfPackageInputs -&gt; m PreConfPackageOutputs
+</span><a href="#local-6989586621679104903"><span class="hs-identifier hs-var">noHook</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe PreConfPackageHook
+</span><a href="#local-6989586621679104915"><span class="hs-identifier hs-var">preConfPackageHook</span></a></span><span>
+</span><span id="line-160"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104923"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104923"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;postConfPackage&quot;</span></span><span>
+</span><span id="line-161"></span><span>        </span><span id="local-6989586621679104930"><span class="annot"><span class="annottext">noHook :: p -&gt; m ()
+</span><a href="#local-6989586621679104930"><span class="hs-identifier hs-var hs-var">noHook</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">() -&gt; m ()
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-162"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104923"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104931"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104931"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:configureHooks:SetupHooks :: SetupHooks -&gt; ConfigureHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AconfigureHooks%3ASetupHooks"><span class="hs-identifier hs-var">configureHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#ConfigureHooks"><span class="hs-identifier hs-type">ConfigureHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679104932"><span id="local-6989586621679104933"><span id="local-6989586621679104934"><span class="annot"><span class="annottext">Maybe PreConfComponentHook
+Maybe PostConfPackageHook
+Maybe PreConfPackageHook
+$sel:preConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfPackageHook
+$sel:postConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PostConfPackageHook
+$sel:preConfComponentHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfComponentHook
+preConfPackageHook :: Maybe PreConfPackageHook
+postConfPackageHook :: Maybe PostConfPackageHook
+preConfComponentHook :: Maybe PreConfComponentHook
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3ApreConfPackageHook%3AConfigureHooks"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-163"></span><span>          </span><span class="hs-comment">-- Run the package-wide post-configure hook.</span><span>
+</span><span id="line-164"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; PostConfPackageHook -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104931"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104923"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(PostConfPackageHook -&gt; IO ()) -&gt; PostConfPackageHook -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PostConfPackageHook
+-&gt; Maybe PostConfPackageHook -&gt; PostConfPackageHook
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">PostConfPackageHook
+forall {m :: * -&gt; *} {p}. Monad m =&gt; p -&gt; m ()
+</span><a href="#local-6989586621679104930"><span class="hs-identifier hs-var">noHook</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe PostConfPackageHook
+</span><a href="#local-6989586621679104933"><span class="hs-identifier hs-var">postConfPackageHook</span></a></span><span>
+</span><span id="line-165"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104936"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104936"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;preConfComponent&quot;</span></span><span>
+</span><span id="line-166"></span><span>        </span><span id="local-6989586621679104943"><span class="annot"><span class="annottext">noHook :: PreConfComponentInputs -&gt; m PreConfComponentOutputs
+</span><a href="#local-6989586621679104943"><span class="hs-identifier hs-var hs-var">noHook</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#PreConfComponentInputs"><span class="hs-identifier hs-type">PreConfComponentInputs</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:component:PreConfComponentInputs :: PreConfComponentInputs -&gt; Component
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3Acomponent%3APreConfComponentInputs"><span class="hs-identifier hs-var">component</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="local-6989586621679104946"><span class="annot"><span class="annottext">Component
+</span><a href="#local-6989586621679104946"><span class="hs-identifier hs-var">c</span></a></span></span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-167"></span><span>          </span><span class="annot"><span class="annottext">PreConfComponentOutputs -&gt; m PreConfComponentOutputs
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">(PreConfComponentOutputs -&gt; m PreConfComponentOutputs)
+-&gt; PreConfComponentOutputs -&gt; m PreConfComponentOutputs
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#PreConfComponentOutputs"><span class="hs-identifier hs-type">PreConfComponentOutputs</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:componentDiff:PreConfComponentOutputs :: ComponentDiff
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AcomponentDiff%3APreConfComponentOutputs"><span class="hs-identifier hs-var">componentDiff</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ComponentName -&gt; ComponentDiff
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#emptyComponentDiff"><span class="hs-identifier hs-var">emptyComponentDiff</span></a></span><span> </span><span class="annot"><span class="annottext">(ComponentName -&gt; ComponentDiff) -&gt; ComponentName -&gt; ComponentDiff
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Component -&gt; ComponentName
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Types.Component.html#componentName"><span class="hs-identifier hs-var">componentName</span></a></span><span> </span><span class="annot"><span class="annottext">Component
+</span><a href="#local-6989586621679104946"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">}</span><span>
+</span><span id="line-168"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104936"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104950"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104950"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:configureHooks:SetupHooks :: SetupHooks -&gt; ConfigureHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AconfigureHooks%3ASetupHooks"><span class="hs-identifier hs-var">configureHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#ConfigureHooks"><span class="hs-identifier hs-type">ConfigureHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679104951"><span id="local-6989586621679104952"><span id="local-6989586621679104953"><span class="annot"><span class="annottext">Maybe PreConfComponentHook
+Maybe PostConfPackageHook
+Maybe PreConfPackageHook
+$sel:preConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfPackageHook
+$sel:postConfPackageHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PostConfPackageHook
+$sel:preConfComponentHook:ConfigureHooks :: ConfigureHooks -&gt; Maybe PreConfComponentHook
+preConfPackageHook :: Maybe PreConfPackageHook
+postConfPackageHook :: Maybe PostConfPackageHook
+preConfComponentHook :: Maybe PreConfComponentHook
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3ApreConfPackageHook%3AConfigureHooks"><span class="hs-glyph hs-var hs-var hs-var hs-var hs-var hs-var">..</span></a></span></span></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-169"></span><span>          </span><span class="hs-comment">-- Run a per-component pre-configure hook; the choice of component</span><span>
+</span><span id="line-170"></span><span>          </span><span class="hs-comment">-- is determined by the input passed to the hook.</span><span>
+</span><span id="line-171"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; PreConfComponentHook -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104950"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104936"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(PreConfComponentHook -&gt; IO ()) -&gt; PreConfComponentHook -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PreConfComponentHook
+-&gt; Maybe PreConfComponentHook -&gt; PreConfComponentHook
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">PreConfComponentHook
+forall {m :: * -&gt; *}.
+Monad m =&gt;
+PreConfComponentInputs -&gt; m PreConfComponentOutputs
+</span><a href="#local-6989586621679104943"><span class="hs-identifier hs-var">noHook</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe PreConfComponentHook
+</span><a href="#local-6989586621679104953"><span class="hs-identifier hs-var">preConfComponentHook</span></a></span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104955"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104955"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;preBuildRules&quot;</span></span><span>
+</span><span id="line-173"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104955"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104956"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104956"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:buildHooks:SetupHooks :: SetupHooks -&gt; BuildHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AbuildHooks%3ASetupHooks"><span class="hs-identifier hs-var">buildHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#BuildHooks"><span class="hs-identifier hs-type">BuildHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679104959"><span id="local-6989586621679104960"><span class="annot"><span class="annottext">Maybe PreBuildComponentRules
+Maybe PostBuildComponentHook
+preBuildComponentRules :: Maybe PreBuildComponentRules
+postBuildComponentHook :: Maybe PostBuildComponentHook
+$sel:preBuildComponentRules:BuildHooks :: BuildHooks -&gt; Maybe PreBuildComponentRules
+$sel:postBuildComponentHook:BuildHooks :: BuildHooks -&gt; Maybe PostBuildComponentHook
+</span><a href="#local-6989586621679104959"><span class="hs-glyph hs-var hs-var hs-var hs-var">..</span></a></span></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-174"></span><span>          </span><span class="hs-comment">-- Return all pre-build rules.</span><span>
+</span><span id="line-175"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle)
+-&gt; [Char]
+-&gt; (PreBuildComponentInputs
+    -&gt; IO (Map RuleId Rule, [MonitorFilePath]))
+-&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104956"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104955"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">((PreBuildComponentInputs
+  -&gt; IO (Map RuleId Rule, [MonitorFilePath]))
+ -&gt; IO ())
+-&gt; (PreBuildComponentInputs
+    -&gt; IO (Map RuleId Rule, [MonitorFilePath]))
+-&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104963"><span class="annot"><span class="annottext">PreBuildComponentInputs
+</span><a href="#local-6989586621679104963"><span class="hs-identifier hs-var">preBuildInputs</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-176"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe PreBuildComponentRules
+</span><a href="#local-6989586621679104959"><span class="hs-identifier hs-var">preBuildComponentRules</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-177"></span><span>              </span><span class="annot"><span class="annottext">Maybe PreBuildComponentRules
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Map RuleId Rule, [MonitorFilePath])
+-&gt; IO (Map RuleId Rule, [MonitorFilePath])
+forall a. a -&gt; IO a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Map RuleId Rule
+forall k a. Map k a
+</span><span class="hs-identifier hs-var">Map.empty</span></span><span class="hs-special">,</span><span> </span><span class="hs-special">[</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>              </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679104964"><span class="annot"><span class="annottext">PreBuildComponentRules
+</span><a href="#local-6989586621679104964"><span class="hs-identifier hs-var">pbcRules</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-179"></span><span>                </span><span class="annot"><span class="annottext">Verbosity
+-&gt; PreBuildComponentInputs
+-&gt; PreBuildComponentRules
+-&gt; IO (Map RuleId Rule, [MonitorFilePath])
+forall env.
+Verbosity
+-&gt; env -&gt; Rules env -&gt; IO (Map RuleId Rule, [MonitorFilePath])
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Rule.html#computeRules"><span class="hs-identifier hs-var">computeRules</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">PreBuildComponentInputs
+</span><a href="#local-6989586621679104963"><span class="hs-identifier hs-var">preBuildInputs</span></a></span><span> </span><span class="annot"><span class="annottext">PreBuildComponentRules
+</span><a href="#local-6989586621679104964"><span class="hs-identifier hs-var">pbcRules</span></a></span><span>
+</span><span id="line-180"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104967"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104967"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;runPreBuildRuleDeps&quot;</span></span><span>
+</span><span id="line-181"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104967"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104968"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104968"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="annot"><span class="annottext">SetupHooks
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-182"></span><span>          </span><span class="hs-comment">-- Run the given pre-build rule dependency computation.</span><span>
+</span><span id="line-183"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle)
+-&gt; [Char]
+-&gt; ((RuleId, RuleDynDepsCmd 'User)
+    -&gt; IO ([Dependency], ByteString))
+-&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104968"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104967"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((RuleId, RuleDynDepsCmd 'User) -&gt; IO ([Dependency], ByteString))
+ -&gt; IO ())
+-&gt; ((RuleId, RuleDynDepsCmd 'User)
+    -&gt; IO ([Dependency], ByteString))
+-&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679104969"><span class="annot"><span class="annottext">RuleId
+</span><a href="#local-6989586621679104969"><span class="hs-identifier hs-var">ruleId</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104970"><span class="annot"><span class="annottext">RuleDynDepsCmd 'User
+</span><a href="#local-6989586621679104970"><span class="hs-identifier hs-var">ruleDeps</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-184"></span><span>            </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">RuleDynDepsCmd 'User -&gt; Maybe (IO ([Dependency], ByteString))
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Rule.html#runRuleDynDepsCmd"><span class="hs-identifier hs-var">runRuleDynDepsCmd</span></a></span><span> </span><span class="annot"><span class="annottext">RuleDynDepsCmd 'User
+</span><a href="#local-6989586621679104970"><span class="hs-identifier hs-var">ruleDeps</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-185"></span><span>              </span><span class="annot"><span class="annottext">Maybe (IO ([Dependency], ByteString))
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Verbosity
+-&gt; SetupHooksExeException -&gt; IO ([Dependency], ByteString)
+forall a1 a.
+(HasCallStack, Show a1, Typeable a1,
+ Exception (VerboseException a1)) =&gt;
+Verbosity -&gt; a1 -&gt; IO a
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.Utils.html#dieWithException"><span class="hs-identifier hs-var">dieWithException</span></a></span><span> </span><span class="annot"><span class="annottext">Verbosity
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Verbosity.html#normal"><span class="hs-identifier hs-var">Verbosity.normal</span></a></span><span> </span><span class="annot"><span class="annottext">(SetupHooksExeException -&gt; IO ([Dependency], ByteString))
+-&gt; SetupHooksExeException -&gt; IO ([Dependency], ByteString)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#BadHooksExeArgs"><span class="hs-identifier hs-var">BadHooksExeArgs</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104967"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(BadHooksExecutableArgs -&gt; SetupHooksExeException)
+-&gt; BadHooksExecutableArgs -&gt; SetupHooksExeException
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">RuleId -&gt; BadHooksExecutableArgs
+</span><a href="Distribution.Client.SetupHooks.HooksExe.Errors.html#NoDynDepsCmd"><span class="hs-identifier hs-var">NoDynDepsCmd</span></a></span><span> </span><span class="annot"><span class="annottext">RuleId
+</span><a href="#local-6989586621679104969"><span class="hs-identifier hs-var">ruleId</span></a></span><span>
+</span><span id="line-186"></span><span>              </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679104973"><span class="annot"><span class="annottext">IO ([Dependency], ByteString)
+</span><a href="#local-6989586621679104973"><span class="hs-identifier hs-var">getDeps</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">IO ([Dependency], ByteString)
+</span><a href="#local-6989586621679104973"><span class="hs-identifier hs-var">getDeps</span></a></span><span>
+</span><span id="line-187"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104975"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104975"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;runPreBuildRule&quot;</span></span><span>
+</span><span id="line-188"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104975"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104976"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104976"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="annot"><span class="annottext">SetupHooks
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-189"></span><span>          </span><span class="hs-comment">-- Run the given pre-build rule.</span><span>
+</span><span id="line-190"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle)
+-&gt; [Char] -&gt; ((RuleId, RuleExecCmd 'User) -&gt; IO ()) -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104976"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104975"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((RuleId, RuleExecCmd 'User) -&gt; IO ()) -&gt; IO ())
+-&gt; ((RuleId, RuleExecCmd 'User) -&gt; IO ()) -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span class="hs-special">(</span><span id="local-6989586621679104977"><span class="annot"><span class="annottext">RuleId
+</span><a href="#local-6989586621679104977"><span class="hs-identifier hs-var">_ruleId</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Rule.html#RuleId"><span class="hs-identifier hs-type">RuleId</span></a></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679104978"><span class="annot"><span class="annottext">RuleExecCmd 'User
+</span><a href="#local-6989586621679104978"><span class="hs-identifier hs-var">rExecCmd</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-191"></span><span>            </span><span class="annot"><span class="annottext">RuleExecCmd 'User -&gt; IO ()
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Rule.html#runRuleExecCmd"><span class="hs-identifier hs-var">runRuleExecCmd</span></a></span><span> </span><span class="annot"><span class="annottext">RuleExecCmd 'User
+</span><a href="#local-6989586621679104978"><span class="hs-identifier hs-var">rExecCmd</span></a></span><span>
+</span><span id="line-192"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104981"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104981"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;postBuildComponent&quot;</span></span><span>
+</span><span id="line-193"></span><span>        </span><span id="local-6989586621679104988"><span class="annot"><span class="annottext">noHook :: p -&gt; m ()
+</span><a href="#local-6989586621679104988"><span class="hs-identifier hs-var hs-var">noHook</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">() -&gt; m ()
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-194"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104981"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679104989"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104989"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:buildHooks:SetupHooks :: SetupHooks -&gt; BuildHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AbuildHooks%3ASetupHooks"><span class="hs-identifier hs-var">buildHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#BuildHooks"><span class="hs-identifier hs-type">BuildHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679104990"><span id="local-6989586621679104991"><span class="annot"><span class="annottext">Maybe PreBuildComponentRules
+Maybe PostBuildComponentHook
+$sel:preBuildComponentRules:BuildHooks :: BuildHooks -&gt; Maybe PreBuildComponentRules
+$sel:postBuildComponentHook:BuildHooks :: BuildHooks -&gt; Maybe PostBuildComponentHook
+preBuildComponentRules :: Maybe PreBuildComponentRules
+postBuildComponentHook :: Maybe PostBuildComponentHook
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3ApreBuildComponentRules%3ABuildHooks"><span class="hs-glyph hs-var hs-var hs-var hs-var">..</span></a></span></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-195"></span><span>          </span><span class="hs-comment">-- Run the per-component post-build hook.</span><span>
+</span><span id="line-196"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; PostBuildComponentHook -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679104989"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104981"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(PostBuildComponentHook -&gt; IO ())
+-&gt; PostBuildComponentHook -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">PostBuildComponentHook
+-&gt; Maybe PostBuildComponentHook -&gt; PostBuildComponentHook
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">PostBuildComponentHook
+forall {m :: * -&gt; *} {p}. Monad m =&gt; p -&gt; m ()
+</span><a href="#local-6989586621679104988"><span class="hs-identifier hs-var">noHook</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe PostBuildComponentHook
+</span><a href="#local-6989586621679104991"><span class="hs-identifier hs-var">postBuildComponentHook</span></a></span><span>
+</span><span id="line-197"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679104993"><span class="annot"><span class="annottext">hookName :: [Char]
+</span><a href="#local-6989586621679104993"><span class="hs-identifier hs-var hs-var">hookName</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><span class="hs-string">&quot;installComponent&quot;</span></span><span>
+</span><span id="line-198"></span><span>        </span><span id="local-6989586621679105000"><span class="annot"><span class="annottext">noHook :: p -&gt; m ()
+</span><a href="#local-6989586621679105000"><span class="hs-identifier hs-var hs-var">noHook</span></a></span></span><span> </span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">() -&gt; m ()
+forall a. a -&gt; m a
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span>     </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">[Char] -&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#HookHandler"><span class="hs-identifier hs-var">HookHandler</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104993"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler)
+-&gt; ((Handle, Handle) -&gt; SetupHooks -&gt; IO ()) -&gt; HookHandler
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679105001"><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679105001"><span class="hs-identifier hs-var">h</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#SetupHooks"><span class="hs-identifier hs-type">SetupHooks</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">$sel:installHooks:SetupHooks :: SetupHooks -&gt; InstallHooks
+</span><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#%24sel%3AinstallHooks%3ASetupHooks"><span class="hs-identifier hs-var">installHooks</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-3.13.0.0\doc\html\Cabal\src/Distribution.Simple.SetupHooks.Internal.html#InstallHooks"><span class="hs-identifier hs-type">InstallHooks</span></a></span><span class="hs-special">{</span><span id="local-6989586621679105004"><span class="annot"><span class="annottext">Maybe InstallComponentHook
+installComponentHook :: Maybe InstallComponentHook
+$sel:installComponentHook:InstallHooks :: InstallHooks -&gt; Maybe InstallComponentHook
+</span><a href="#local-6989586621679105004"><span class="hs-glyph hs-var hs-var">..</span></a></span></span><span class="hs-special">}</span><span class="hs-special">}</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-200"></span><span>          </span><span class="hs-comment">-- Run the per-component copy/install hook.</span><span>
+</span><span id="line-201"></span><span>          </span><span class="annot"><span class="annottext">(Handle, Handle) -&gt; [Char] -&gt; InstallComponentHook -&gt; IO ()
+forall inputs outputs.
+(Binary inputs, Binary outputs) =&gt;
+(Handle, Handle) -&gt; [Char] -&gt; (inputs -&gt; IO outputs) -&gt; IO ()
+</span><a href="Distribution.Client.SetupHooks.HooksExe.html#runHookHandle"><span class="hs-identifier hs-var">runHookHandle</span></a></span><span> </span><span class="annot"><span class="annottext">(Handle, Handle)
+</span><a href="#local-6989586621679105001"><span class="hs-identifier hs-var">h</span></a></span><span> </span><span class="annot"><span class="annottext">[Char]
+</span><a href="#local-6989586621679104993"><span class="hs-identifier hs-var">hookName</span></a></span><span> </span><span class="annot"><span class="annottext">(InstallComponentHook -&gt; IO ()) -&gt; InstallComponentHook -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">InstallComponentHook
+-&gt; Maybe InstallComponentHook -&gt; InstallComponentHook
+forall a. a -&gt; Maybe a -&gt; a
+</span><span class="hs-identifier hs-var">fromMaybe</span></span><span> </span><span class="annot"><span class="annottext">InstallComponentHook
+forall {m :: * -&gt; *} {p}. Monad m =&gt; p -&gt; m ()
+</span><a href="#local-6989586621679105000"><span class="hs-identifier hs-var">noHook</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe InstallComponentHook
+</span><a href="#local-6989586621679105004"><span class="hs-identifier hs-var">installComponentHook</span></a></span><span>
+</span><span id="line-202"></span><span>  </span><span class="hs-special">]</span><span>
+</span><span id="line-203"></span></pre></body></html>

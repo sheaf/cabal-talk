@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE CPP #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">-----------------------------------------------------------------------------</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-comment">-- |</span><span>
+</span><span id="line-6"></span><span class="hs-comment">-- Module      :  Distribution.Compat.GetShortPathName</span><span>
+</span><span id="line-7"></span><span class="hs-comment">--</span><span>
+</span><span id="line-8"></span><span class="hs-comment">-- Maintainer  :  cabal-devel@haskell.org</span><span>
+</span><span id="line-9"></span><span class="hs-comment">-- Portability :  Windows-only</span><span>
+</span><span id="line-10"></span><span class="hs-comment">--</span><span>
+</span><span id="line-11"></span><span class="hs-comment">-- Win32 API 'GetShortPathName' function.</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Distribution.Compat.GetShortPathName</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Distribution.Compat.GetShortPathName.html#getShortPathName"><span class="hs-identifier">getShortPathName</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">where</span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Docs\Code\Haskell\cabal\dist-newstyle\build\x86_64-windows\ghc-9.6.3\Cabal-syntax-3.13.0.0\doc\html\Cabal-syntax\src/Distribution.Compat.Prelude.html"><span class="hs-identifier">Distribution.Compat.Prelude</span></a></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span class="hs-cpp">
+
+#ifdef mingw32_HOST_OS
+</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Prelude</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.html"><span class="hs-identifier">System.Win32</span></a></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Win32</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.html"><span class="hs-identifier">System.Win32</span></a></span><span>          </span><span class="hs-special">(</span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#LPCTSTR"><span class="hs-identifier">LPCTSTR</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#LPTSTR"><span class="hs-identifier">LPTSTR</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#DWORD"><span class="hs-identifier">DWORD</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Foreign.Marshal.Array</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">allocaArray</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span class="hs-comment">{- FOURMOLU_DISABLE -}</span><span class="hs-cpp">
+#ifdef x86_64_HOST_ARCH
+</span><span class="hs-cpp">#define WINAPI ccall
+</span><span class="hs-cpp">#else
+</span><span class="hs-cpp">#define WINAPI stdcall
+</span><span class="hs-cpp">#endif
+</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">foreign</span><span> </span><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">WINAPI</span><span> </span><span class="hs-keyword">unsafe</span><span> </span><span class="hs-string">&quot;windows.h GetShortPathNameW&quot;</span><span>
+</span><span id="line-33"></span><span>  </span><span id="c_GetShortPathName"><span class="annot"><a href="Distribution.Compat.GetShortPathName.html#c_GetShortPathName"><span class="hs-identifier hs-var">c_GetShortPathName</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#LPCTSTR"><span class="hs-identifier hs-type">LPCTSTR</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#LPTSTR"><span class="hs-identifier hs-type">LPTSTR</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#DWORD"><span class="hs-identifier hs-type">DWORD</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prelude.IO</span></span><span> </span><span class="annot"><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#DWORD"><span class="hs-identifier hs-type">DWORD</span></a></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-comment">-- | On Windows, retrieves the short path form of the specified path. On</span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- non-Windows, does nothing. See https://github.com/haskell/cabal/issues/3185.</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--</span><span>
+</span><span id="line-38"></span><span class="hs-comment">-- From MS's GetShortPathName docs:</span><span>
+</span><span id="line-39"></span><span class="hs-comment">--</span><span>
+</span><span id="line-40"></span><span class="hs-comment">--      Passing NULL for [the second] parameter and zero for cchBuffer</span><span>
+</span><span id="line-41"></span><span class="hs-comment">--      will always return the required buffer size for a</span><span>
+</span><span id="line-42"></span><span class="hs-comment">--      specified lpszLongPath.</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--</span><span>
+</span><span id="line-44"></span><span class="annot"><a href="Distribution.Compat.GetShortPathName.html#getShortPathName"><span class="hs-identifier hs-type">getShortPathName</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">FilePath</span></span><span>
+</span><span id="line-45"></span><span id="getShortPathName"><span class="annot"><span class="annottext">getShortPathName :: FilePath -&gt; IO FilePath
+</span><a href="Distribution.Compat.GetShortPathName.html#getShortPathName"><span class="hs-identifier hs-var hs-var">getShortPathName</span></a></span></span><span> </span><span id="local-6989586621679400419"><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679400419"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-46"></span><span>  </span><span class="annot"><span class="annottext">FilePath -&gt; (LPTSTR -&gt; IO FilePath) -&gt; IO FilePath
+forall a. FilePath -&gt; (LPTSTR -&gt; IO a) -&gt; IO a
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#withTString"><span class="hs-identifier hs-var">Win32.withTString</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><a href="#local-6989586621679400419"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">((LPTSTR -&gt; IO FilePath) -&gt; IO FilePath)
+-&gt; (LPTSTR -&gt; IO FilePath) -&gt; IO FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679400421"><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400421"><span class="hs-identifier hs-var">c_path</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-47"></span><span>    </span><span id="local-6989586621679400422"><span class="annot"><span class="annottext">DWORD
+</span><a href="#local-6989586621679400422"><span class="hs-identifier hs-var">c_len</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO DWORD -&gt; IO DWORD
+forall a. (Eq a, Num a) =&gt; FilePath -&gt; IO a -&gt; IO a
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#failIfZero"><span class="hs-identifier hs-var">Win32.failIfZero</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;GetShortPathName #1 failed!&quot;</span></span><span> </span><span class="annot"><span class="annottext">(IO DWORD -&gt; IO DWORD) -&gt; IO DWORD -&gt; IO DWORD
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-48"></span><span>      </span><span class="annot"><span class="annottext">LPTSTR -&gt; LPTSTR -&gt; DWORD -&gt; IO DWORD
+</span><a href="Distribution.Compat.GetShortPathName.html#c_GetShortPathName"><span class="hs-identifier hs-var">c_GetShortPathName</span></a></span><span> </span><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400421"><span class="hs-identifier hs-var">c_path</span></a></span><span> </span><span class="annot"><span class="annottext">LPTSTR
+forall a. Ptr a
+</span><span class="hs-identifier hs-var">Win32.nullPtr</span></span><span> </span><span class="annot"><span class="annottext">DWORD
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-49"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679400429"><span class="annot"><span class="annottext">arr_len :: Int
+</span><a href="#local-6989586621679400429"><span class="hs-identifier hs-var hs-var">arr_len</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">DWORD -&gt; Int
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">DWORD
+</span><a href="#local-6989586621679400422"><span class="hs-identifier hs-var">c_len</span></a></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><span class="annottext">Int -&gt; (LPTSTR -&gt; IO FilePath) -&gt; IO FilePath
+forall a b. Storable a =&gt; Int -&gt; (Ptr a -&gt; IO b) -&gt; IO b
+</span><span class="hs-identifier hs-var">allocaArray</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679400429"><span class="hs-identifier hs-var">arr_len</span></a></span><span> </span><span class="annot"><span class="annottext">((LPTSTR -&gt; IO FilePath) -&gt; IO FilePath)
+-&gt; (LPTSTR -&gt; IO FilePath) -&gt; IO FilePath
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679400430"><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400430"><span class="hs-identifier hs-var">c_out</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-51"></span><span>      </span><span class="annot"><span class="annottext">IO DWORD -&gt; IO ()
+forall (f :: * -&gt; *) a. Functor f =&gt; f a -&gt; f ()
+</span><span class="hs-identifier hs-var">void</span></span><span> </span><span class="annot"><span class="annottext">(IO DWORD -&gt; IO ()) -&gt; IO DWORD -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">FilePath -&gt; IO DWORD -&gt; IO DWORD
+forall a. (Eq a, Num a) =&gt; FilePath -&gt; IO a -&gt; IO a
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#failIfZero"><span class="hs-identifier hs-var">Win32.failIfZero</span></a></span><span> </span><span class="annot"><span class="annottext">FilePath
+</span><span class="hs-string">&quot;GetShortPathName #2 failed!&quot;</span></span><span> </span><span class="annot"><span class="annottext">(IO DWORD -&gt; IO DWORD) -&gt; IO DWORD -&gt; IO DWORD
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-52"></span><span>        </span><span class="annot"><span class="annottext">LPTSTR -&gt; LPTSTR -&gt; DWORD -&gt; IO DWORD
+</span><a href="Distribution.Compat.GetShortPathName.html#c_GetShortPathName"><span class="hs-identifier hs-var">c_GetShortPathName</span></a></span><span> </span><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400421"><span class="hs-identifier hs-var">c_path</span></a></span><span> </span><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400430"><span class="hs-identifier hs-var">c_out</span></a></span><span> </span><span class="annot"><span class="annottext">DWORD
+</span><a href="#local-6989586621679400422"><span class="hs-identifier hs-var">c_len</span></a></span><span>
+</span><span id="line-53"></span><span>      </span><span class="annot"><span class="annottext">LPTSTR -&gt; IO FilePath
+</span><a href="file://C:\Haskell\cabal\store\ghc-9.6.3\Win32-2.13.4.0-0950a747dbb5d4fd8ebe144d0403886d055d3698\share\doc\html\src/System.Win32.Types.html#peekTString"><span class="hs-identifier hs-var">Win32.peekTString</span></a></span><span> </span><span class="annot"><span class="annottext">LPTSTR
+</span><a href="#local-6989586621679400430"><span class="hs-identifier hs-var">c_out</span></a></span><span class="hs-cpp">
+
+#else
+</span><span>
+</span><span id="line-57"></span><span class="hs-identifier">getShortPathName</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-identifier">FilePath</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-identifier">IO</span><span> </span><span class="hs-identifier">FilePath</span><span>
+</span><span id="line-58"></span><span class="hs-identifier">getShortPathName</span><span> </span><span class="hs-identifier">path</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-identifier">return</span><span> </span><span class="hs-identifier">path</span><span class="hs-cpp">
+
+#endif
+</span><span class="hs-comment">{- FOURMOLU_ENABLE -}</span><span>
+</span><span id="line-62"></span></pre></body></html>
