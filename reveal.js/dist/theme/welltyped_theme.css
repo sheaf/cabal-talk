@@ -105,7 +105,7 @@ pre.sourceCode {
 }
 
 code {
-  background-color:rgb(222, 238, 252);
+  background-color:rgba(222, 238, 252, 1.0);
   border-radius: 8px;
   font-family: "Fira Code", monospace;
   font-size: inherit;

@@ -185,11 +185,14 @@ how to build (e.g. <code>build-type: Simple</code>)
 </section>
 <section id="the-cabal-library" class="slide level2">
 <h2>The <code>Cabal</code> library</h2>
-<p>The Cabal library provides</p>
+<p>The <code>Cabal</code> library (including <code>Cabal-syntax</code>)
+provides:</p>
 <ul>
-<li>data types, parser and pretty printer for the <code>.cabal</code>
-file format and the <code>hc-pkg</code> <em>installed package info</em>
-format (in <code>Cabal-syntax</code>),</li>
+<li>data types, parser and pretty printer for
+<ul>
+<li>the <code>.cabal</code> file format,</li>
+<li>the <code>hc-pkg</code> <em>installed package info</em> format,</li>
+</ul></li>
 <li>information about Haskell compilers (e.g. supported Haskell language
 extensions),</li>
 <li>the <code>Setup.hs</code> CLI,</li>
@@ -201,26 +204,28 @@ extensions),</li>
 </section>
 <section id="package-registration" class="slide level2">
 <h2>Package registration</h2>
-<p>A Haskell compiler <code>hc</code> supporting the Cabal specification
-is required to provide a package registration program,
-<code>hc-pkg</code>. The details of package registration are laid out in
-the Cabal specification. The end result is that we store information
-about installed libraries.</p>
+<p>To implement the <code>Cabal</code> specf, a Haskell compiler
+(<code>hc</code>) must provide a package registration program
+(<code>hc-pkg</code>).</p>
+<p>The details of package registration are laid out in the Cabal
+specification.</p>
 <!--
 TODO: give example of `ghc-pkg describe` and looking at `.conf` files.
 -->
+<div class="fragment" data-fragment-index="1">
 <p>Note that, rather confusingly, one does not register packages with
 this tool, only individual units.</p>
 <p class="indicator">
 ⭲
 </p>
+</div>
 </section>
 <section id="the-setup-interface" class="slide level2">
 <h2>The <code>Setup</code> interface</h2>
-<p>To implement Cabal specification, the build system of a package needs
-only provide the <code>Setup</code> command-line interface, consisting
-of <code>Setup</code> executable that supports invocations of the form
-<code>./Setup &lt;cmd&gt;</code>.</p>
+<p>To implement the Cabal specification, the build system of a package
+needs only provide the <code>Setup</code> command-line interface,
+consisting of a <code>Setup</code> executable which supports
+<code>./Setup &lt;cmd&gt;</code> invocations.</p>
 <div class="element: fragment">
 <table>
 <colgroup>
@@ -241,8 +246,7 @@ of <code>Setup</code> executable that supports invocations of the form
 <tr class="even">
 <td
 style="text-align: right;"><code>build</code>/<code>haddock</code>/<code>repl</code></td>
-<td>prepare sources and build/generate docs/open a session in the
-interpreter</td>
+<td>prepare sources and build/generate docs/open a GHCi session</td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;"><code>test</code>/<code>bench</code></td>
@@ -251,8 +255,8 @@ interpreter</td>
 <tr class="even">
 <td
 style="text-align: right;"><code>install</code>/<code>register</code></td>
-<td>move files into an image dir or final location/register libraries
-with the compiler</td>
+<td>move files into final location/register libraries in the
+<code>PackageDB</code></td>
 </tr>
 <tr class="odd">
 <td style="text-align: right;"><code>sdist</code></td>
@@ -276,7 +280,7 @@ with the compiler</td>
 href="https://github.com/haskell/cabal/blob/3a8c69cb142e27caae5d754ac400636b3417b198/Cabal/src/Distribution/Simple/Setup/Config.hs#L88"><code>Cabal</code>
 <code>ConfigFlags</code></a> (by far the most complex).</p>
 <p>In practice, <code>./Setup configure</code> takes many flags, with
-the configuration being preserved for subsequenty invocations (which
+the configuration being preserved for subsequent invocations (which
 barely take any flags, e.g.
 <code>./Setup build -v2 --builddir=&lt;dir&gt;</code>).</p>
 <p class="indicator">
@@ -356,7 +360,7 @@ href="https://github.com/haskell/cabal/blob/3a8c69cb142e27caae5d754ac400636b3417
 </p>
 </section>
 <section id="setup.hs-too-general" class="slide level2">
-<h2>Setup.hs too general</h2>
+<h2><code>Setup.hs</code> too general</h2>
 <p>Each package brings its own (possibly completely custom) build
 system.<br />
 This limits what <code>cabal-install</code> or HLS can do in
@@ -397,8 +401,10 @@ href="https://hackage.haskell.org/package/Cabal-3.12.0.0/docs/Distribution-Simpl
 </div>
 </div>
 </section>
-<section id="example-singletons-base" class="slide level2">
-<h2>Example (<code>singletons-base</code>)</h2>
+<section id="build-type-custom-example-singletons-base"
+class="slide level2">
+<h2><code>build-type: Custom</code> example
+(<code>singletons-base</code>)</h2>
 <p>See <a
 href="https://github.com/sheaf/cabal-talk/blob/master/examples/custom/singletons-base/Setup.hs">the
 <code>Setup.hs</code> file for <code>singletons-base</code></a>.</p>
@@ -474,18 +480,18 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a 
 </style>
 <p>There are three hooks into the configure phase:</p>
 <ol type="1">
-<li>Package-wide pre-configure.<br />
+<li><strong>Package-wide pre-configure.</strong><br />
 <code>type PreConfPackageHook = PreConfPackageInputs -&gt; IO PreConfPackageOutputs</code><br />
 
 <div class="fragment insert" data-fragment-index="1">
 custom <code>./configure</code>-style logic
 </div></li>
-<li>Package-wide post-configure.<br />
+<li><strong>Package-wide post-configure.</strong><br />
 <code>type PostConfPackageHook = PostConfPackageInputs -&gt; IO ()</code>
 <div class="fragment insert" data-fragment-index="1">
 write package-wide information to disk for (3)
 </div></li>
-<li>Per-component pre-configure.<br />
+<li><strong>Per-component pre-configure.</strong><br />
 <code>type PreConfComponentHook = PreConfComponentInputs -&gt; IO PreConfComponentOutputs</code><br />
 
 <div class="fragment insert" data-fragment-index="1">
@@ -537,9 +543,9 @@ arguments,</li>
 </section>
 <section id="example-singletons-base-using-hooks" class="slide level2">
 <h2>Example: <code>singletons-base</code>, using <code>Hooks</code></h2>
-<p>See the pre-build rules of the <a
+<p>See the pre-build rules for <a
 href="https://github.com/sheaf/cabal-talk/blob/master/examples/hooks/singletons-base/SetupHooks.hs"><code>singletons-base</code></a>
-example.</p>
+migrated to <code>build-type: Hooks</code>.</p>
 <p class="indicator">
 ⭲
 </p>
@@ -555,6 +561,7 @@ example (<code>myPreBuildRules</code>).</p>
 </section>
 <section id="leveraging-the-library-interface" class="slide level2">
 <h2>Leveraging the library interface</h2>
+<p>Plan:</p>
 <ul>
 <li>compiling hooks to an external executable,</li>
 <li>versioning of the Hooks API,</li>
@@ -571,11 +578,8 @@ class="slide level2">
 <h2>hooks-exe: the external hooks executable</h2>
 <p>To integrate packages with <code>build-type: Hooks</code> through a
 library interface, we compile the <code>SetupHooks</code> module into a
-separate executable with which we communicate via the CLI.</p>
-<!--
-TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
--->
-<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">hooks-exe</span> <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
+separate executable with which we communicate via a CLI.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> hooks-exe <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
 <p><strong>Note:</strong> Uses new <code>CommunicationHandle</code> API
 from <a
 href="https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html"><code>process</code></a>.</p>
@@ -594,12 +598,14 @@ It is just <code>cabal-install</code> which internally compiles
 </section>
 <section id="versioning" class="slide level2">
 <h2>Versioning</h2>
-<p>What do we do when <code>cabal-install</code> is linked against a
-specific version of the <code>Cabal</code> library (say
-<code>3.16.1.0</code>) that is incompatible with the <code>Cabal</code>
-version required by a package with <code>build-type: Hooks</code>
-(e.g. the package declares <code>setup-depends: Cabal == 3.14.*</code>
-)?</p>
+<p>How do we compile a package <code>pkg</code> with
+<code>build-type: Hooks</code> when:</p>
+<ul>
+<li><code>pkg</code> declares
+<code>setup-depends: Cabal == 3.14.*</code>,</li>
+<li><code>cabal-install</code> is linked against <code>Cabal</code>
+<code>3.16.1.0</code>?</li>
+</ul>
 <p class="indicator">
 ⭲
 </p>
@@ -643,25 +649,24 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a 
 <p>The external hooks executable supports three queries for pre-build
 rules:</p>
 <ul>
-<li>ask for all known rules using the <code>preBuildRules</code>
-hook,<br />
-this returns a value of type <code>Map RuleId RuleBinary</code>;</li>
-<li>run a dynamic dependency computation, this returns additional edges
-to the build graph of pre-build rules as well as extra arguments to be
-passed to the rule in order to execute it;</li>
-<li>execute a rule (e.g. run a pre-processor).</li>
+<li><strong>ask for all known rules using the <code>preBuildRules</code>
+hook</strong><br />
+returns a value of type <code>Map RuleId RuleBinary</code></li>
+<li><strong>run a dynamic dependency computation,</strong><br />
+returns additional edges to the build graph of pre-build rules<br />
+(+ extra arguments to be passed to the rule)</li>
+<li><strong>execute a rule</strong> (e.g. run a pre-processor)</li>
 </ul>
-<div class="element: fragment">
+<p><br /></p>
 <p>Details about how e.g. HLS would leverage this are given in <a
 href="https://sheaf.github.io/cabal-talk/docs/Cabal-hooks/Distribution-Simple-SetupHooks.html#g:9">the
 <code>Cabal-hooks</code> documentation</a>.</p>
 <p class="indicator">
 ⭲
 </p>
-</div>
 </section>
-<section id="process-global-state" class="slide level2">
-<h2>Process-global state</h2>
+<section id="todo-process-global-state" class="slide level2">
+<h2>TODO: process-global state</h2>
 <p>When <a
 href="https://github.com/haskell/cabal/blob/ab4c13704160f51952dc0d53ecfd10b2feaf6497/cabal-install/src/Distribution/Client/SetupWrapper.hs#L588-L595"><code>cabal-install</code>
 invokes <code>./Setup</code></a>, it sets a bunch of process-global
@@ -684,30 +689,36 @@ class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a 
 href="https://github.com/haskell/cabal/commit/7b9058328e162a4cb707b5d5b25cd1d2df66680e"><code>7b90583</code></a>)</li>
 <li>environment variables (<a
 href="https://github.com/haskell/cabal/commit/ee11ac6c7badc452def79116729bd16aea15c0df"><code>ee11ac6</code></a>)</li>
-<li>logging handle (<a
+<li><p class="insert">
+logging handle (<a
 href="https://github.com/haskell/cabal/issues/9987"><code>Cabal</code>
-#9987</a>)</li>
+#9987</a>)
+</p></li>
 </ul>
 <p class="indicator">
 ⭲
 </p>
 </div>
 </section>
-<section id="making-custom-a-separate-component" class="slide level2">
-<h2>Making Custom a separate component</h2>
+<section id="todo-making-custom-a-separate-component"
+class="slide level2">
+<h2>TODO: making Custom a separate component</h2>
 <ul>
 <li>Packages that make use of a custom setup stanza (<code>Custom</code>
 and <code>Hooks</code> build types) are treated as a whole.</li>
 <li>Locked out of certain features (e.g. multiple sublibraries).</li>
 </ul>
 <p>This is a long-standing flaw in the implementation of
-<code>cabal-install</code>.<br />
-The task is up for grabs at <a
+<code>cabal-install</code>.</p>
+<p><br /></p>
+<div class="fragment insert">
+<p>The task is up for grabs at <a
 href="https://github.com/haskell/cabal/issues/9986"><code>Cabal</code>
 #9986</a>.</p>
 <p class="indicator">
 ⭲
 </p>
+</div>
 </section>
 <section id="end-of-slides" class="slide level2">
 <h2>End of slides</h2>

@@ -61,10 +61,11 @@ with other developers.
 
 ## The `Cabal` library
 
-The Cabal library provides
+The `Cabal` library (including `Cabal-syntax`) provides:
 
-  - data types, parser and pretty printer for the `.cabal` file format
-    and the `hc-pkg` *installed package info* format (in `Cabal-syntax`),
+  - data types, parser and pretty printer for
+    - the `.cabal` file format,
+    - the `hc-pkg` *installed package info* format,
   - information about Haskell compilers (e.g. supported Haskell language extensions),
   - the `Setup.hs` CLI,
   - how to build a single package.
@@ -73,34 +74,36 @@ The Cabal library provides
 
 ## Package registration
 
-A Haskell compiler `hc` supporting the Cabal specification is required to provide
-a package registration program, `hc-pkg`. The details of package registration
-are laid out in the Cabal specification. The end result is that we store
-information about installed libraries.
+To implement the `Cabal` specf, a Haskell compiler (`hc`) must provide
+a package registration program (`hc-pkg`).
+
+The details of package registration are laid out in the Cabal specification.
 
 <!--
 TODO: give example of `ghc-pkg describe` and looking at `.conf` files.
 -->
 
+<div class="fragment" data-fragment-index="1">
 Note that, rather confusingly, one does not register packages with this tool,
 only individual units.
 
 <p class="indicator">⭲</p>
+</div>
 
 ## The `Setup` interface
 
-To implement Cabal specification, the build system of a package needs only
-provide the `Setup` command-line interface, consisting of `Setup` executable
-that supports invocations of the form `./Setup <cmd>`.
+To implement the Cabal specification, the build system of a package needs only
+provide the `Setup` command-line interface, consisting of a `Setup` executable
+which supports `./Setup <cmd>` invocations.
 
 :::{.element: class="fragment"}
 
 |                     `<cmd>` | description |
 | --------------------------: | -----------------------------------------------------------------------|
 |                 `configure` | resolve compiler, tools and dependencies |
-|    `build`/`haddock`/`repl` | prepare sources and build/generate docs/open a session in the interpreter |
+|    `build`/`haddock`/`repl` | prepare sources and build/generate docs/open a GHCi session |
 |              `test`/`bench` | run testsuites or benchmarks |
-| `install`/`register` | move files into an image dir or final location/register libraries with the compiler |
+| `install`/`register` | move files into final location/register libraries in the `PackageDB` |
 |                     `sdist` | create an archive for distribution/packaging |
 |                     `clean` | clean local files (local package store, local build artifacts, ...) |
 
@@ -114,7 +117,7 @@ Each command comes with its own set of flags, e.g.
 (by far the most complex).
 
 In practice, `./Setup configure` takes many flags, with the configuration
-being preserved for subsequenty invocations (which barely take any flags, e.g.
+being preserved for subsequent invocations (which barely take any flags, e.g.
 `./Setup build -v2 --builddir=<dir>`).
 
 <p class="indicator">⭲</p>
@@ -161,7 +164,7 @@ To build individual units:
 
 <p class="indicator">⭲</p>
 
-## Setup.hs too general
+## `Setup.hs` too general
 
 Each package brings its own (possibly completely custom) build system.  
 This limits what `cabal-install` or HLS can do in multi-package projects.
@@ -189,7 +192,7 @@ In practice, **all** packages use known build systems. Either:
 </div>
 </div>
 
-## Example (`singletons-base`)
+## `build-type: Custom` example (`singletons-base`)
 
 See [the `Setup.hs` file for `singletons-base`](https://github.com/sheaf/cabal-talk/blob/master/examples/custom/singletons-base/Setup.hs).
 
@@ -255,13 +258,13 @@ setupHooks =
 
 There are three hooks into the configure phase:
 
-  1. Package-wide pre-configure.  
+  1. **Package-wide pre-configure.**  
      `type PreConfPackageHook = PreConfPackageInputs -> IO PreConfPackageOutputs`  
      <div class="fragment insert" class="insert" data-fragment-index="1">custom `./configure`-style logic</div>
-  2. Package-wide post-configure.  
+  2. **Package-wide post-configure.**  
      `type PostConfPackageHook = PostConfPackageInputs -> IO ()`
      <div class="fragment insert" data-fragment-index="1">write package-wide information to disk for (3)</div>
-  3. Per-component pre-configure.  
+  3. **Per-component pre-configure.**  
      `type PreConfComponentHook = PreConfComponentInputs -> IO PreConfComponentOutputs`  
      <div class="fragment insert" class="insert" data-fragment-index="1">modify components (add exposed modules, specify flags)</div>
 
@@ -297,7 +300,7 @@ Thinking in terms of custom pre-processors:
 
 ## Example: `singletons-base`, using `Hooks`
 
-See the pre-build rules of the [`singletons-base`](https://github.com/sheaf/cabal-talk/blob/master/examples/hooks/singletons-base/SetupHooks.hs) example.
+See the pre-build rules for [`singletons-base`](https://github.com/sheaf/cabal-talk/blob/master/examples/hooks/singletons-base/SetupHooks.hs) migrated to `build-type: Hooks`.
 
 <p class="indicator">⭲</p>
 
@@ -308,6 +311,8 @@ See the pre-build rules of the [`custom-preproc`](https://github.com/sheaf/cabal
 <p class="indicator">⭲</p>
 
 ## Leveraging the library interface
+
+Plan:
 
   - compiling hooks to an external executable,
   - versioning of the Hooks API,
@@ -320,14 +325,10 @@ See the pre-build rules of the [`custom-preproc`](https://github.com/sheaf/cabal
 
 To integrate packages with `build-type: Hooks` through a library interface,
 we compile the `SetupHooks` module into a separate executable
-with which we communicate via the CLI.
-
-<!--
-TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
--->
+with which we communicate via a CLI.
 
 ```sh
-hooks-exe <inputHandle> <outputHandle> <hookName>
+> hooks-exe <inputHandle> <outputHandle> <hookName>
 ```
 
 **Note:** Uses new `CommunicationHandle` API from [`process`](https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html).
@@ -346,10 +347,10 @@ It is just `cabal-install` which internally compiles `SetupHooks.hs` to a separa
 
 ## Versioning
 
-What do we do when `cabal-install` is linked
-against a specific version of the `Cabal` library (say `3.16.1.0`) that is
-incompatible with the `Cabal` version required by a package with `build-type: Hooks`
-(e.g. the package declares `setup-depends: Cabal == 3.14.*` )?
+How do we compile a package `pkg` with `build-type: Hooks` when:
+
+  - `pkg` declares `setup-depends: Cabal == 3.14.*`,
+  - `cabal-install` is linked against `Cabal` `3.16.1.0`?
 
 <p class="indicator">⭲</p>
 
@@ -390,22 +391,22 @@ inject_preConfComponentOutputs_V3_14_V3_16
 
 The external hooks executable supports three queries for pre-build rules:
 
-  - ask for all known rules using the `preBuildRules` hook,  
-    this returns a value of type `Map RuleId RuleBinary`;
-  - run a dynamic dependency computation,
-    this returns additional edges to the build graph of pre-build rules
-    as well as extra arguments to be passed to the rule in order to execute it;
-  - execute a rule (e.g. run a pre-processor).
+  - **ask for all known rules using the `preBuildRules` hook**  
+    returns a value of type `Map RuleId RuleBinary`
+  - **run a dynamic dependency computation,**  
+    returns additional edges to the build graph of pre-build rules  
+    (+ extra arguments to be passed to the rule)
+  - **execute a rule** (e.g. run a pre-processor)
 
-:::{.element: class="fragment"}
+
+<br />
+
 Details about how e.g. HLS would leverage this are given in
 [the `Cabal-hooks` documentation](https://sheaf.github.io/cabal-talk/docs/Cabal-hooks/Distribution-Simple-SetupHooks.html#g:9).
 
 <p class="indicator">⭲</p>
-:::
 
-
-## Process-global state
+## TODO: process-global state
 
 When [`cabal-install` invokes `./Setup`](https://github.com/haskell/cabal/blob/ab4c13704160f51952dc0d53ecfd10b2feaf6497/cabal-install/src/Distribution/Client/SetupWrapper.hs#L588-L595), it sets a bunch of process-global state.
 
@@ -427,21 +428,26 @@ When [`cabal-install` invokes `./Setup`](https://github.com/haskell/cabal/blob/a
 
   - working directory ([`7b90583`](https://github.com/haskell/cabal/commit/7b9058328e162a4cb707b5d5b25cd1d2df66680e))
   - environment variables ([`ee11ac6`](https://github.com/haskell/cabal/commit/ee11ac6c7badc452def79116729bd16aea15c0df))
-  - logging handle ([`Cabal` #9987](https://github.com/haskell/cabal/issues/9987))
+  - <p class="insert">logging handle ([`Cabal` #9987](https://github.com/haskell/cabal/issues/9987))</p>
 
 <p class="indicator">⭲</p>
 :::
 
-## Making Custom a separate component
+## TODO: making Custom a separate component
 
 - Packages that make use of a custom setup stanza (`Custom` and `Hooks` build types)
   are treated as a whole.
 - Locked out of certain features (e.g. multiple sublibraries).
 
-This is a long-standing flaw in the implementation of `cabal-install`.  
+This is a long-standing flaw in the implementation of `cabal-install`.
+
+<br />
+
+<div class="fragment insert">
 The task is up for grabs at [`Cabal` #9986](https://github.com/haskell/cabal/issues/9986).
 
 <p class="indicator">⭲</p>
+</div>
 
 ## End of slides
 
