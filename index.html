@@ -138,17 +138,6 @@ href="https://www.haskell.org/cabal/proposal/pkg-spec.pdf">Cabal
 specification</a> was designed to allow Haskell tool authors to package
 their code and share it with other developers.</p>
 <p><br /></p>
-<style>
-.boxed {
-  background: #b0d3f5;
-  color: black;
-  border: 3px solid #32659ca2;
-  margin: 0px auto;
-  width: 900px;
-  padding: 10px;
-  border-radius: 10px;
-}
-</style>
 <div class="boxed">
 <blockquote>
 <p>The Haskell Package System (Cabal) has the following main goal:</p>
@@ -582,7 +571,7 @@ class="slide level2">
 <h2>hooks-exe: the external hooks executable</h2>
 <p>To integrate packages with <code>build-type: Hooks</code> through a
 library interface, we compile the <code>SetupHooks</code> module into a
-separate executable with which we communicates via the CLI.</p>
+separate executable with which we communicate via the CLI.</p>
 <!--
 TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
 -->
@@ -590,9 +579,18 @@ TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
 <p><strong>Note:</strong> Uses new <code>CommunicationHandle</code> API
 from <a
 href="https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html"><code>process</code></a>.</p>
+<p><br /></p>
+<div class="boxed fragment" data-fragment-index="1">
+<p>The API for <code>build-type</code> Hooks is <strong>not</strong> a
+CLI, it is a library interface.<br />
+It is just <code>cabal-install</code> which internally compiles
+<code>SetupHooks.hs</code> to a separate executable and uses a CLI.</p>
+</div>
+<div class="fragment" data-fragment-index="1">
 <p class="indicator">
 ⭲
 </p>
+</div>
 </section>
 <section id="versioning" class="slide level2">
 <h2>Versioning</h2>

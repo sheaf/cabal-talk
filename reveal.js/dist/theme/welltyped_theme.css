@@ -223,3 +223,14 @@ td:first-child {
 .reveal .slide-number-delimiter {
   margin: -6px;
 }
+
+/* Style for info boxes */
+.boxed {
+  background: #b0d3f5;
+  color: black;
+  border: 3px solid #32659ca2;
+  margin: 0px auto;
+  width: 900px;
+  padding: 10px;
+  border-radius: 10px;
+}

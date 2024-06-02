@@ -29,18 +29,6 @@ with other developers.
 
 <br />
 
-<style>
-.boxed {
-  background: #b0d3f5;
-  color: black;
-  border: 3px solid #32659ca2;
-  margin: 0px auto;
-  width: 900px;
-  padding: 10px;
-  border-radius: 10px;
-}
-</style>
-
 <div class=boxed>
 
 > The Haskell Package System (Cabal) has the following main goal:
@@ -332,7 +320,7 @@ See the pre-build rules of the [`custom-preproc`](https://github.com/sheaf/cabal
 
 To integrate packages with `build-type: Hooks` through a library interface,
 we compile the `SetupHooks` module into a separate executable
-with which we communicates via the CLI.
+with which we communicate via the CLI.
 
 <!--
 TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
@@ -344,7 +332,17 @@ hooks-exe <inputHandle> <outputHandle> <hookName>
 
 **Note:** Uses new `CommunicationHandle` API from [`process`](https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html).
 
+<br />
+
+<div class="boxed fragment" data-fragment-index="1">
+The API for `build-type` Hooks is **not** a CLI, it is a
+library interface.   
+It is just `cabal-install` which internally compiles `SetupHooks.hs` to a separate executable and uses a CLI.
+</div>
+
+<div class="fragment" data-fragment-index="1">
 <p class="indicator">⭲</p>
+</div>
 
 ## Versioning
 
