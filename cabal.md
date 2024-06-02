@@ -58,7 +58,7 @@ with other developers.
 <ul>
   <li>unit of distribution in source format</li>
   <li>enough metadata to make a into system package
-    <ul class="fragment">
+    <ul class="fragment" data-fragment-index="1">
       <li>package name and version number</li>
       <li>dependencies (e.g. `base >= 4.17 && < 4.21, lens ^>= 5.3`)</li>
       <li>exposed API (libraries, exposed modules, executables...)</li>
@@ -67,7 +67,9 @@ with other developers.
   </li>
 </ul>
 
+<div class="fragment" data-fragment-index="1">
 <p class="indicator">⭲</p>
+</div>
 
 ## The `Cabal` library
 
@@ -145,7 +147,9 @@ To build individual units:
   <li class="fragment" data-fragment-index="7">`hc-pkg register --package-db=<pkgDb> <unitPkgRegFile>` (libs only)</li>
 </ul>
 
-<p class="indicator" class="fragment" data-fragment-index="7">⭲</p>
+<div class="fragment" data-fragment-index="7">
+<p class="indicator">⭲</p>
+</div>
 </div>
 
 ## Invoking `Setup`: the tricky parts
@@ -171,18 +175,31 @@ To build individual units:
 
 ## Setup.hs too general
 
-Each package brings its own (possibly completely custom) build system,
-limiting what `cabal-install` or HLS can do in multi-package projects.
+Each package brings its own (possibly completely custom) build system.  
+This limits what `cabal-install` or HLS can do in multi-package projects.
 
-:::{.element: class="fragment"}
-In practice, **all** packages use known build systems:
+<br />
 
-  1. `build-type: Simple`: `./Setup configure` = [`Cabal` library `configure`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Configure.hs#L323), `./Setup build` = [`Cabal` library `build`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Build.hs#L100), etc.
-  2. A specific implementation of `build-type: Custom` using
-     [`UserHooks`](https://hackage.haskell.org/package/Cabal-3.12.0.0/docs/Distribution-Simple-UserHooks.html#t:UserHooks).
+<div class="fragment" data-fragment-index=1>
+In practice, **all** packages use known build systems. Either:
 
+<ol>
+  <li class="fragment" data-fragment-index="2">`build-type: Simple`
+    <ul>
+      <li>`./Setup configure` = [`Cabal` library `configure`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Configure.hs#L323)</li>
+      <li>`./Setup build` = [`Cabal` library `build`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Build.hs#L100)</li>
+      <li>...</li>
+    </ul>or</li>
+  <li class="fragment" data-fragment-index="3">
+    A specific implementation of `build-type: Custom` using
+    [`UserHooks`](https://hackage.haskell.org/package/Cabal-3.12.0.0/docs/Distribution-Simple-UserHooks.html#t:UserHooks).
+  </li>
+</ol>
+
+<div class="fragment" data-fragment-index="3">
 <p class="indicator">⭲</p>
-:::
+</div>
+</div>
 
 ## Example (`singletons-base`)
 
@@ -260,7 +277,9 @@ There are three hooks into the configure phase:
      `type PreConfComponentHook = PreConfComponentInputs -> IO PreConfComponentOutputs`  
      <div class="fragment insert" class="insert" data-fragment-index="1">modify components (add exposed modules, specify flags)</div>
 
-<p class="indicator" class="fragment" data-fragment-index="1">⭲</p>
+<div class="fragment" data-fragment-index="1">
+<p class="indicator">⭲</p>
+</div>
 
 ## Configuring a custom preprocessor
 
@@ -323,7 +342,9 @@ TODO: we railed against the CLI of Setup.hs... so why is this CLI OK?
 hooks-exe <inputHandle> <outputHandle> <hookName>
 ```
 
-*Note:* Uses new `CommunicationHandle` API from [`process`](https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html)
+**Note:** Uses new `CommunicationHandle` API from [`process`](https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html).
+
+<p class="indicator">⭲</p>
 
 ## Versioning
 
@@ -332,10 +353,14 @@ against a specific version of the `Cabal` library (say `3.16.1.0`) that is
 incompatible with the `Cabal` version required by a package with `build-type: Hooks`
 (e.g. the package declares `setup-depends: Cabal == 3.14.*` )?
 
+<p class="indicator">⭲</p>
+
 ## First line of defense: `Structured`
 
 We use [`Cabal`'s `Structured` mechanism](https://hackage.haskell.org/package/Cabal-syntax-3.12.0.0/docs/Distribution-Utils-Structured.html) to ensure that both sides of the IPC channel
 agree on the `Binary` instances used.
+
+<p class="indicator">⭲</p>
 
 ## Private dependencies
 
@@ -428,10 +453,18 @@ Slides available online: [sheaf.github.io/cabal-talk](https://sheaf.github.io/ca
 
 Cabal tickets (in increasing order of difficulty):
 
-  - Monitoring directory-recursive file globs in `cabal-install`: [`Cabal` #10064](https://github.com/haskell/cabal/issues/10064)
+  - Monitoring directory-recursive file globs in `cabal-install`: [`Cabal` #10064](https://github.com/haskell/cabal/issues/10064).
   - Add support for logging handles to `Cabal`: [`Cabal` #9987](https://github.com/haskell/cabal/issues/9987).
   - Make setup a separate component: [`Cabal` #9986](https://github.com/haskell/cabal/issues/9986).
 
 Also:
 
   - HLS: add fine-grained recompilation logic for pre-build rules.
+
+<br />
+
+Setup Hooks reference material:
+
+  - [Haskell Foundation Tech RFC #60](https://github.com/haskellfoundation/tech-proposals/blob/main/rfc/060-replacing-cabal-custom-build.md)
+  - [`Cabal-hooks` Haddocks](https://sheaf.github.io/cabal-talk/docs/Cabal-hooks/Distribution-Simple-SetupHooks.html) [(Hackage)](https://hackage.haskell.org/package/Cabal-hooks/docs/Distribution-Simple-SetupHooks.html)
+  - [Cabal Hooks overlay](https://gitlab.haskell.org/mpickering/hooks-setup-testing)
