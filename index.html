@@ -116,6 +116,7 @@ pandoc -t revealjs -s -o index.html cabal.md -V revealjs-url=reveal.js -V theme=
 
 Custom theme in reveal.js/dist/themes/welltyped_theme.css
 -->
+<!-- language-all: haskell-->
 </section>
 <section id="plan" class="slide level2">
 <h2>Plan</h2>
@@ -390,14 +391,16 @@ href="https://github.com/haskell/cabal/blob/3a8c69cb142e27caae5d754ac400636b3417
 system.<br />
 This limits what <code>cabal-install</code> or HLS can do in
 multi-package projects.</p>
-<p><br /></p>
 <div class="fragment" data-fragment-index="1">
-<p>In practice, <strong>all</strong> packages use known build systems.
-Either:</p>
+<p>In practice, <strong>all</strong> packages use the <code>Cabal</code>
+library:</p>
 <ol>
 <li class="fragment" data-fragment-index="2">
-<code>build-type: Simple</code>
-<ul>
+<p><code>build-type: Simple</code></p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Distribution.Simple</span> ( defaultMain ); main = defaultMain</span></code></pre></div>
+<ul class="fragment" data-fragment-index="3">
 <li>
 <code>./Setup configure</code> = <a
 href="https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Configure.hs#L323"><code>Cabal</code>
@@ -412,14 +415,16 @@ library <code>build</code></a>
 …
 </li>
 </ul>
+<div class="fragment" data-fragment-index="3">
 or
+</div>
 </li>
-<li class="fragment" data-fragment-index="3">
-A specific implementation of <code>build-type: Custom</code> using <a
+<li class="fragment" data-fragment-index="4">
+An implementation of <code>build-type: Custom</code> using <a
 href="https://hackage.haskell.org/package/Cabal-3.12.0.0/docs/Distribution-Simple-UserHooks.html#t:UserHooks"><code>UserHooks</code></a>.
 </li>
 </ol>
-<div class="fragment" data-fragment-index="3">
+<div class="fragment" data-fragment-index="4">
 <p class="indicator">
 ⭲
 </p>
@@ -471,27 +476,27 @@ Hooks overlay</a></li>
 </section>
 <section id="setup-hooks-in-practice" class="slide level2">
 <h2>Setup hooks in practice</h2>
-<div class="sourceCode" id="cb5"><pre
-class="sourceCode txt"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>cabal-version: 3.14</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>...</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>build-type: Hooks</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>...</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>custom-setup</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  setup-depends:</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    base        &gt;= 4.18 &amp;&amp; &lt; 5,</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    Cabal-hooks &gt;= 0.1  &amp;&amp; &lt; 0.2</span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">SetupHooks</span> <span class="kw">where</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Cabal-hooks</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Distribution.Simple.SetupHooks</span></span>
+class="sourceCode txt"><code class="sourceCode default"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>cabal-version: 3.14</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>build-type: Hooks</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>...</span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="ot">setupHooks ::</span> <span class="dt">SetupHooks</span></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>setupHooks <span class="ot">=</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  noSetupHooks</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    { configureHooks <span class="ot">=</span> myConfigureHooks</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    , buildHooks <span class="ot">=</span> myBuildHooks }</span></code></pre></div>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>custom-setup</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  setup-depends:</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    base        &gt;= 4.18 &amp;&amp; &lt; 5,</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    Cabal-hooks &gt;= 0.1  &amp;&amp; &lt; 0.2</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">SetupHooks</span> <span class="kw">where</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Cabal-hooks</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Distribution.Simple.SetupHooks</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="ot">setupHooks ::</span> <span class="dt">SetupHooks</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>setupHooks <span class="ot">=</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  noSetupHooks</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    { configureHooks <span class="ot">=</span> myConfigureHooks</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    , buildHooks <span class="ot">=</span> myBuildHooks }</span></code></pre></div>
 <p class="indicator">
 ⭲
 </p>
@@ -604,7 +609,7 @@ class="slide level2">
 <p>To integrate packages with <code>build-type: Hooks</code> through a
 library interface, we compile the <code>SetupHooks</code> module into a
 separate executable with which we communicate via a CLI.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> hooks-exe <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> hooks-exe <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
 <p><strong>Note:</strong> Uses new <code>CommunicationHandle</code> API
 from <a
 href="https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html"><code>process</code></a>.</p>
@@ -655,15 +660,15 @@ of the <code>Cabal</code> library, and would come bundled with internal
 adapter functions.</p>
 </div>
 <div class="element: fragment">
-<div class="sourceCode" id="cb8"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>projectOut_localBuildInfo_V3_16_V3_14</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.LocalBuildInfo</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.LocalBuildInfo</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>projectOut_PreConfComponentInputs_V3_16_V3_14</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.PreConfComponentInputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.PreConfComponentInputs</span></span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>inject_preConfComponentOutputs_V3_14_V3_16</span>
-<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_14.PreConfComponentOutputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_16.PreConfComponentOutputs</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>projectOut_localBuildInfo_V3_16_V3_14</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.LocalBuildInfo</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.LocalBuildInfo</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>projectOut_PreConfComponentInputs_V3_16_V3_14</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.PreConfComponentInputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.PreConfComponentInputs</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>inject_preConfComponentOutputs_V3_14_V3_16</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_14.PreConfComponentOutputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_16.PreConfComponentOutputs</span></span></code></pre></div>
 <p class="indicator">
 ⭲
 </p>
@@ -697,16 +702,16 @@ href="https://github.com/haskell/cabal/blob/ab4c13704160f51952dc0d53ecfd10b2feaf
 invokes <code>./Setup</code></a>, it sets a bunch of process-global
 state.</p>
 <div class="element: fragment">
-<div class="sourceCode" id="cb9"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> cp <span class="ot">=</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>        (proc path args)</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>          { Process.cwd <span class="ot">=</span> <span class="fu">fmap</span> getSymbolicPath <span class="op">$</span> useWorkingDir options</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>          , Process.env <span class="ot">=</span> env</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>          , Process.std_out <span class="ot">=</span> loggingHandle</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>          , Process.std_err <span class="ot">=</span> loggingHandle</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>          , Process.delegate_ctlc <span class="ot">=</span> isInteractive options</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>          }</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  maybeExit <span class="op">$</span> rawSystemProc verbosity cp</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> cp <span class="ot">=</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>        (proc path args)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>          { Process.cwd <span class="ot">=</span> <span class="fu">fmap</span> getSymbolicPath <span class="op">$</span> useWorkingDir options</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>          , Process.env <span class="ot">=</span> env</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>          , Process.std_out <span class="ot">=</span> loggingHandle</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>          , Process.std_err <span class="ot">=</span> loggingHandle</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>          , Process.delegate_ctlc <span class="ot">=</span> isInteractive options</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  maybeExit <span class="op">$</span> rawSystemProc verbosity cp</span></code></pre></div>
 </div>
 <div class="element: fragment">
 <ul>

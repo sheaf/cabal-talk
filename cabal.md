@@ -13,6 +13,8 @@ subtitle: Haskell Ecosystem Workshop
 date: June 7th, 2024
 ---
 
+<!-- language-all: haskell-->
+
 ## Plan
 
 - Cabal as a packaging framework: Common Architecture for Building Applications and Libraries.
@@ -201,27 +203,30 @@ To build individual units:
 ## `Setup.hs` too general
 
 Each package brings its own (possibly completely custom) build system.  
-This limits what `cabal-install` or HLS can do in multi-package projects.
-
-<br />
+This limits what `cabal-install` or HLS can do in multi-package projects.  
 
 <div class="fragment" data-fragment-index=1>
-In practice, **all** packages use known build systems. Either:
+In practice, **all** packages use the `Cabal` library:
 
 <ol>
-  <li class="fragment" data-fragment-index="2">`build-type: Simple`
-    <ul>
+  <li class="fragment" data-fragment-index="2">
+    `build-type: Simple`  
+```haskell
+module Main where
+import Distribution.Simple ( defaultMain ); main = defaultMain
+```
+    <ul class="fragment" data-fragment-index="3">
       <li>`./Setup configure` = [`Cabal` library `configure`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Configure.hs#L323)</li>
       <li>`./Setup build` = [`Cabal` library `build`](https://github.com/haskell/cabal/blob/1b243bd0057c23ad7ed41f6ed60e4c9c77bbc9f0/Cabal/src/Distribution/Simple/Build.hs#L100)</li>
       <li>...</li>
-    </ul>or</li>
-  <li class="fragment" data-fragment-index="3">
-    A specific implementation of `build-type: Custom` using
+    </ul><div class="fragment" data-fragment-index="3">or</div></li>
+  <li class="fragment" data-fragment-index="4">
+    An implementation of `build-type: Custom` using
     [`UserHooks`](https://hackage.haskell.org/package/Cabal-3.12.0.0/docs/Distribution-Simple-UserHooks.html#t:UserHooks).
   </li>
 </ol>
 
-<div class="fragment" data-fragment-index="3">
+<div class="fragment" data-fragment-index="4">
 <p class="indicator">⭲</p>
 </div>
 </div>
