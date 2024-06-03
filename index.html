@@ -135,8 +135,8 @@ class="slide level2">
 <h2>Background on Cabal: framework and library</h2>
 <p>The <a
 href="https://www.haskell.org/cabal/proposal/pkg-spec.pdf">Cabal
-specification</a> was designed to allow Haskell tool authors to package
-their code and share it with other developers.</p>
+specification (2005)</a> was designed to allow Haskell tool authors to
+package their code and share it with other developers.</p>
 <p><br /></p>
 <div class="boxed">
 <blockquote>
@@ -204,17 +204,42 @@ extensions),</li>
 </section>
 <section id="package-registration" class="slide level2">
 <h2>Package registration</h2>
-<p>To implement the <code>Cabal</code> specf, a Haskell compiler
+<p>To implement the <code>Cabal</code> spec, a Haskell compiler
 (<code>hc</code>) must provide a package registration program
 (<code>hc-pkg</code>).</p>
 <p>The details of package registration are laid out in the Cabal
 specification.</p>
-<!--
-TODO: give example of `ghc-pkg describe` and looking at `.conf` files.
--->
 <div class="fragment" data-fragment-index="1">
+<pre><code>&gt; ghc-pkg describe attoparsec --package-db=&lt;cabal-store&gt;/&lt;ghc-ver&gt;/package.db</code></pre>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode txt"><code class="sourceCode default"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>name:            attoparsec</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>version:         0.14.4</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>visibility:      public</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>id:              attoparsec-0.14.4-a723f6157cb40470c8790185a66d38e55c777104</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>abi:             52f592e79352f6fa9575bbf0d73225b8</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>exposed:         True</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>exposed-modules: [...]</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>hidden-modules:  [...]</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>depends:         array-0.5.6.0-4cb3 [...]</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>[...]</span></code></pre></div>
+<p class="indicator">
+⭲
+</p>
+</div>
+</section>
+<section id="section" class="slide level2">
+<h2></h2>
 <p>Note that, rather confusingly, one does not register packages with
 this tool, only individual units.</p>
+<div class="fragment" data-fragment-index="1">
+<pre><code>&gt; ghc-pkg describe z-attoparsec-z-internal</code></pre>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode txt"><code class="sourceCode default"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>name:            z-attoparsec-z-attoparsec-internal</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>version:         0.14.4</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>package-name:    attoparsec</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>lib-name:        attoparsec-internal</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>id:              attoparsec-0.14.4-6fbd7dcf5cca9291ea0685cbdfeb6ec13ed4a4cb</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>[...]</span></code></pre></div>
 <p class="indicator">
 ⭲
 </p>
@@ -412,7 +437,7 @@ href="https://github.com/sheaf/cabal-talk/blob/master/examples/custom/singletons
 ⭲
 </p>
 </section>
-<section id="section" class="slide level2">
+<section id="section-1" class="slide level2">
 <h2></h2>
 <p>Instead we would be better off with a <strong>Haskell library
 interface</strong> for customising the build system of a package, and
@@ -446,27 +471,27 @@ Hooks overlay</a></li>
 </section>
 <section id="setup-hooks-in-practice" class="slide level2">
 <h2>Setup hooks in practice</h2>
-<div class="sourceCode" id="cb1"><pre
-class="sourceCode txt"><code class="sourceCode default"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>cabal-version: 3.14</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>...</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>build-type: Hooks</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>...</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>custom-setup</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  setup-depends:</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    base        &gt;= 4.18 &amp;&amp; &lt; 5,</span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>    Cabal-hooks &gt;= 0.1  &amp;&amp; &lt; 0.2</span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">SetupHooks</span> <span class="kw">where</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Cabal-hooks</span></span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Distribution.Simple.SetupHooks</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="ot">setupHooks ::</span> <span class="dt">SetupHooks</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>setupHooks <span class="ot">=</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  noSetupHooks</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    { configureHooks <span class="ot">=</span> myConfigureHooks</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    , buildHooks <span class="ot">=</span> myBuildHooks }</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode txt"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>cabal-version: 3.14</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>build-type: Hooks</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>...</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>custom-setup</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  setup-depends:</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    base        &gt;= 4.18 &amp;&amp; &lt; 5,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    Cabal-hooks &gt;= 0.1  &amp;&amp; &lt; 0.2</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="dt">SetupHooks</span> <span class="kw">where</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Cabal-hooks</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Distribution.Simple.SetupHooks</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="ot">setupHooks ::</span> <span class="dt">SetupHooks</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>setupHooks <span class="ot">=</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  noSetupHooks</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    { configureHooks <span class="ot">=</span> myConfigureHooks</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    , buildHooks <span class="ot">=</span> myBuildHooks }</span></code></pre></div>
 <p class="indicator">
 ⭲
 </p>
@@ -579,7 +604,7 @@ class="slide level2">
 <p>To integrate packages with <code>build-type: Hooks</code> through a
 library interface, we compile the <code>SetupHooks</code> module into a
 separate executable with which we communicate via a CLI.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> hooks-exe <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="op">&gt;</span> hooks-exe <span class="op">&lt;</span>inputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>outputHandle<span class="op">&gt;</span> <span class="op">&lt;</span>hookName<span class="op">&gt;</span></span></code></pre></div>
 <p><strong>Note:</strong> Uses new <code>CommunicationHandle</code> API
 from <a
 href="https://hackage.haskell.org/package/process-1.6.20.0/docs/System-Process-CommunicationHandle.html"><code>process</code></a>.</p>
@@ -630,15 +655,15 @@ of the <code>Cabal</code> library, and would come bundled with internal
 adapter functions.</p>
 </div>
 <div class="element: fragment">
-<div class="sourceCode" id="cb4"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>projectOut_localBuildInfo_V3_16_V3_14</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.LocalBuildInfo</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.LocalBuildInfo</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>projectOut_PreConfComponentInputs_V3_16_V3_14</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.PreConfComponentInputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.PreConfComponentInputs</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>inject_preConfComponentOutputs_V3_14_V3_16</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_14.PreConfComponentOutputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_16.PreConfComponentOutputs</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>projectOut_localBuildInfo_V3_16_V3_14</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.LocalBuildInfo</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.LocalBuildInfo</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>projectOut_PreConfComponentInputs_V3_16_V3_14</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_16.PreConfComponentInputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_14.PreConfComponentInputs</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>inject_preConfComponentOutputs_V3_14_V3_16</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="ot">  ::</span> <span class="dt">V3_14.PreConfComponentOutputs</span> <span class="ot">-&gt;</span> <span class="dt">V3_16.PreConfComponentOutputs</span></span></code></pre></div>
 <p class="indicator">
 ⭲
 </p>
@@ -672,16 +697,16 @@ href="https://github.com/haskell/cabal/blob/ab4c13704160f51952dc0d53ecfd10b2feaf
 invokes <code>./Setup</code></a>, it sets a bunch of process-global
 state.</p>
 <div class="element: fragment">
-<div class="sourceCode" id="cb5"><pre
-class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> cp <span class="ot">=</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>        (proc path args)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>          { Process.cwd <span class="ot">=</span> <span class="fu">fmap</span> getSymbolicPath <span class="op">$</span> useWorkingDir options</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>          , Process.env <span class="ot">=</span> env</span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>          , Process.std_out <span class="ot">=</span> loggingHandle</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>          , Process.std_err <span class="ot">=</span> loggingHandle</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>          , Process.delegate_ctlc <span class="ot">=</span> isInteractive options</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>          }</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>  maybeExit <span class="op">$</span> rawSystemProc verbosity cp</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> cp <span class="ot">=</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>        (proc path args)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>          { Process.cwd <span class="ot">=</span> <span class="fu">fmap</span> getSymbolicPath <span class="op">$</span> useWorkingDir options</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>          , Process.env <span class="ot">=</span> env</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>          , Process.std_out <span class="ot">=</span> loggingHandle</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>          , Process.std_err <span class="ot">=</span> loggingHandle</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>          , Process.delegate_ctlc <span class="ot">=</span> isInteractive options</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  maybeExit <span class="op">$</span> rawSystemProc verbosity cp</span></code></pre></div>
 </div>
 <div class="element: fragment">
 <ul>

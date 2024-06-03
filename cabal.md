@@ -23,7 +23,7 @@ date: June 7th, 2024
 
 ## Background on Cabal: framework and library
 
-The [Cabal specification](https://www.haskell.org/cabal/proposal/pkg-spec.pdf)
+The [Cabal specification (2005)](https://www.haskell.org/cabal/proposal/pkg-spec.pdf)
 was designed to allow Haskell tool authors to package their code and share it
 with other developers.
 
@@ -74,18 +74,52 @@ The `Cabal` library (including `Cabal-syntax`) provides:
 
 ## Package registration
 
-To implement the `Cabal` specf, a Haskell compiler (`hc`) must provide
+To implement the `Cabal` spec, a Haskell compiler (`hc`) must provide
 a package registration program (`hc-pkg`).
 
 The details of package registration are laid out in the Cabal specification.
 
-<!--
-TODO: give example of `ghc-pkg describe` and looking at `.conf` files.
--->
-
 <div class="fragment" data-fragment-index="1">
+
+```
+> ghc-pkg describe attoparsec --package-db=<cabal-store>/<ghc-ver>/package.db
+```
+
+```txt
+name:            attoparsec
+version:         0.14.4
+visibility:      public
+id:              attoparsec-0.14.4-a723f6157cb40470c8790185a66d38e55c777104
+abi:             52f592e79352f6fa9575bbf0d73225b8
+exposed:         True
+exposed-modules: [...]
+hidden-modules:  [...]
+depends:         array-0.5.6.0-4cb3 [...]
+[...]
+```
+
+<p class="indicator">⭲</p>
+</div>
+
+##
+
 Note that, rather confusingly, one does not register packages with this tool,
 only individual units.
+
+<div class="fragment" data-fragment-index="1">
+
+```
+> ghc-pkg describe z-attoparsec-z-internal
+```
+
+```txt
+name:            z-attoparsec-z-attoparsec-internal
+version:         0.14.4
+package-name:    attoparsec
+lib-name:        attoparsec-internal
+id:              attoparsec-0.14.4-6fbd7dcf5cca9291ea0685cbdfeb6ec13ed4a4cb
+[...]
+```
 
 <p class="indicator">⭲</p>
 </div>
